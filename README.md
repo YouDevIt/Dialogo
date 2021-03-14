@@ -1,10 +1,13 @@
 # Dialogo
 Il linguaggio in "italiano controllato" per creare avventure testuali in italiano.
 
-Versione attuale: 0.03 / 14 marzo 2021
+Versione attuale: **0.03 / 14 marzo 2021**
 
 Si tratta di un primo abbozzo che necessita di moltissimi miglioramenti e aggiunte.
 Per ora è disponibile la **toolchain** per Windows.
+
+Presentazione del progetto su YouTube:
+https://www.youtube.com/watch?v=9RSKoO6xRRY
 
 ## Cos'è **Dialogo**
 **Dialogo** è un linguaggio studiato appositamente per creare opere di *narrativa interattiva* in corso di sviluppo. L'autore è Leonardo Boselli (https://www.youdev.it)
