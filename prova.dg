@@ -1,0 +1,84 @@
+(current player #Pippo)
+
+(#Pippo is #in #cucina)
+
+(name #cucina) cucina
+(room #cucina)
+(female #cucina)
+
+(look #cucina) Un'ampia cucina.
+
+(name #salotto) salotto
+(room #salotto)
+(look #salotto) Un elegante salotto.
+
+(name #camera) camera
+(room #camera)
+(female #camera)
+
+(look #camera) Un comoda camera.
+
+(name #soffitta) soffitta
+(room #soffitta)
+(female #soffitta)
+
+(look #soffitta) Una soffitta buia.
+
+(name #tavernetta) tavernetta
+(room #tavernetta)
+(female #tavernetta)
+
+(look #tavernetta) Un'accogliente tavernetta.
+
+(name #cantina) cantina
+(room #cantina)
+(female #cantina)
+
+(look #cantina) Una cantina buia.
+
+(from #cucina go #north to #salotto)
+(from #salotto go #south to #cucina)
+(from #cucina go #south to #camera)
+(from #camera go #north to #cucina)
+(from #camera go #down to #cantina)
+(from #cantina go #up to #camera)
+(from #camera go #south to #tavernetta)
+(from #camera go #up to #soffitta)
+(name #grotta) grotta
+(room #grotta)
+(female #grotta)
+
+(from #grotta go #up to #cantina)
+(from #cantina go #down to #grotta)
+(look #grotta) Una grotta molto buia.
+
+(name #caverna) caverna
+(room #caverna)
+(female #caverna)
+
+(from #caverna go #up to #grotta)
+(from #grotta go #down to #caverna)
+(look #caverna) Una grotta molto buia.
+
+(name #tavolo) tavolo
+(supporter #tavolo)
+(on-seat #tavolo)
+(#tavolo is #in #cucina)
+
+(descr #tavolo) Un ottimo tavolo.
+
+(appearance #tavolo) Un tavolo fa bella mostra di sé.
+
+(name #scatola) scatola
+(container #scatola)
+(item #scatola)
+(#scatola is handled)
+(openable #scatola)
+(#scatola is open)
+(female #scatola)
+
+(#scatola is open)
+(#scatola is #on #tavolo)
+
+(descr #scatola) Una bella scatola rossa
+

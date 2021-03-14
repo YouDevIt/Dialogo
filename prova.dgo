@@ -1,0 +1,24 @@
+
+Il giocatore è Pippo. Pippo è nella cucina.
+
+La cucina è una stanza. La sua descrizione è "Un'ampia cucina.".
+Il salotto è una stanza. La descrizione del salotto è "Un elegante salotto.".
+La camera è una stanza. La sua descrizione è "Un comoda camera.".
+La soffitta è una stanza. La sua descrizione è "Una soffitta buia.".
+La tavernetta è una stanza. La descrizione è "Un'accogliente tavernetta.".
+La cantina è una stanza. La descrizione è "Una cantina buia.".
+
+Il salotto è a nord della cucina.
+La camera è a sud della cucina.
+
+Dalla camera si va giù verso la cantina.
+
+Dalla camera si va a sud verso la tavernetta ma non viceversa.
+Dalla camera si va in alto verso la soffitta senza ritorno.
+
+La grotta è una stanza. È sotto la cantina. La sua descrizione è "Una grotta molto buia.".
+La caverna è una stanza sotto la grotta. La sua descrizione è "Una grotta molto buia.".
+
+Il tavolo è un supporto nella cucina. La descrizione è "Un ottimo tavolo.".
+L'aspetto è "Un tavolo fa bella mostra di sé.".
+La scatola è un contenitore aperto sul tavolo. La descrizione della scatola è "Una bella scatola rossa".
