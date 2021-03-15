@@ -228,7 +228,7 @@ statement	<-	EOL
 					}
 					/ ARTIND (
 						"stanza" 		{ print_room(last_name); }
-						/"supporto" 	{ print_supporter(last_name); }
+						/ "supporto" 	{ print_supporter(last_name); }
 						/ "contenitore" 	{ print_container(last_name); }
 							(SPACE PROPCONTAINER)?
 						/ "oggetto" 	{ print_item(last_name); }
