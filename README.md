@@ -39,7 +39,7 @@ Per compilare il sorgente in C del parser in un eseguibile viene usato il compil
 
 L'italiano controllato richiede una serie di frasi che seguono schemi ben precisi. Le frasi riconosciute sono in continuo aggioranmento.
 
-Un elenco parziale è disponibile qui: https://github.com/YouDevIt/Dialogo/blob/main/frasi.txt
+Un elenco parziale è disponibile qui: https://github.com/YouDevIt/Dialogo/blob/main/FRASI.md
 
 ## Domande?
 Puoi contattarmi per email (leonardo.boselli@youdev.it)
