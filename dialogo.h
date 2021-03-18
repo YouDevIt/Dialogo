@@ -28,18 +28,29 @@ const int D_EST = 4;
 const int D_OVEST = 10;
 
 void print_start();
+void print_final();
+void print_ident();
+void _printf(const char* fmt, ...);
 void print_room(char* name);
-void print_supporter(char* name);
-void print_container(char* name);
+void print_supporter(char* name, int mobile);
+void print_container(char* name, int mobile);
+void print_object(char* name);
 void print_item(char* name);
+void print_handled(char* name);
+void print_wearable(char* name);
 void print_female(char* name);
 void print_edible(char* name);
+void print_openable(char* name);
+void print_open(char* name);
+void print_close(char* name);
 void print_is_in(char* name, char* loc);
 void print_is_on(char* name, char* loc);
 void print_descr(char* name, char* str);
 void print_look(char* name, char* str);
 void print_fromto(int dir, char* locfrom, char* locto);
 void print_fromtoandback(int dir, char* locfrom, char* locto);
+void print_instead_of(char* azione, char* obj1, char* obj2);
+void print_plaintext(char* str);
 
 
 #ifdef __cplusplus
@@ -49,7 +60,7 @@ extern "C" {
 typedef struct pcc_context_tag pcc_context_t;
 
 pcc_context_t *pcc_create(void *auxil);
-int pcc_parse(pcc_context_t *ctx, int *ret);
+int pcc_parse(pcc_context_t *ctx, char **ret);
 void pcc_destroy(pcc_context_t *ctx);
 
 #ifdef __cplusplus

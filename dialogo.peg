@@ -1,4 +1,6 @@
 
+%value "char *"
+
 %header {
 void init();
 void final();
@@ -25,18 +27,29 @@ const int D_EST = 4;
 const int D_OVEST = 10;
 
 void print_start();
+void print_final();
+void print_ident();
+void _printf(const char* fmt, ...);
 void print_room(char* name);
-void print_supporter(char* name);
-void print_container(char* name);
+void print_supporter(char* name, int mobile);
+void print_container(char* name, int mobile);
+void print_object(char* name);
 void print_item(char* name);
+void print_handled(char* name);
+void print_wearable(char* name);
 void print_female(char* name);
 void print_edible(char* name);
+void print_openable(char* name);
+void print_open(char* name);
+void print_close(char* name);
 void print_is_in(char* name, char* loc);
 void print_is_on(char* name, char* loc);
 void print_descr(char* name, char* str);
 void print_look(char* name, char* str);
 void print_fromto(int dir, char* locfrom, char* locto);
 void print_fromtoandback(int dir, char* locfrom, char* locto);
+void print_instead_of(char* azione, char* obj1, char* obj2);
+void print_plaintext(char* str);
 
 }
 
@@ -46,9 +59,10 @@ void print_fromtoandback(int dir, char* locfrom, char* locto);
 #include <stdlib.h>
 #include <string.h>
 
-struct Array rooms, objects;
+struct Array rooms, objects, containers, supporters, vehicles;
 
 char* last_name = NULL;
+char* last_ident = NULL;
 int last_genre = 0;
 
 void array_init(struct Array* array, int size) {
@@ -83,12 +97,18 @@ int array_contains(struct Array* array, char* str) {
 void init() {
 	array_init(&rooms,100);
 	array_init(&objects,100);
+	array_init(&containers,20);
+	array_init(&supporters,20);
+	array_init(&vehicles,10);
 	print_start();
 }
 
 void final() {
+	print_final();
 	array_free(&rooms);
 	array_free(&objects);
+	array_free(&containers);
+	array_free(&supporters);
 }
 
 void set_last_name(char* name) {
@@ -97,108 +117,127 @@ void set_last_name(char* name) {
 	last_name = strdup(name);
 }
 
-void print_start() {
+void print_error(char* type, char* msg) {fprintf(stderr,"\n%s=<%s>\n",type,msg);}
+void print_start() {}
+void print_final() {}
+void _printf (const char *format, ...) {
+   va_list arg;
+   va_start (arg, format);
+   if(last_ident)
+	printf("%s",last_ident);
+   vfprintf(stdout, format, arg);
+   va_end (arg);
 }
 void print_room(char* name) {
 	array_add(&rooms,name);
-	printf("(name #%s) %s\n",name,name);
-	printf("(room #%s)\n",name);
-	if(last_genre == 1)
-		printf("(female #%s)\n\n",name);
-}
-void print_supporter(char* name) {
-	array_add(&objects,name);
-	printf("(name #%s) %s\n",name,name);
-	printf("(supporter #%s)\n",name);
-	printf("(on-seat #%s)\n",name);
+	_printf("(name #%s) %s\n",name,name);
+	_printf("(room #%s)\n",name);
 	if(last_genre == 1)
 		print_female(name);
 }
-void print_container(char* name) {
+void print_supporter(char* name, int mobile) {
 	array_add(&objects,name);
-	printf("(name #%s) %s\n",name,name);
-	printf("(container #%s)\n",name);
-	printf("(item #%s)\n",name);
-	printf("(#%s is handled)\n",name);
-	printf("(openable #%s)\n",name);
-	printf("(#%s is open)\n",name);
+	array_add(&supporters,name);
+	_printf("(name #%s) %s\n",name,name);
+	_printf("(supporter #%s)\n",name);
+	if(mobile) {
+		array_add(&vehicles,name);
+		_printf("(vehicle #%s)\n",name);
+		_printf("(actor supporter #%s)\n",name);
+	}
 	if(last_genre == 1)
 		print_female(name);
 }
-void print_item(char* name) {
+void print_container(char* name, int mobile) {
 	array_add(&objects,name);
-	printf("(name #%s) %s\n",name,name);
-	printf("(item #%s)\n\n",name);
-	printf("(#%s is handled)\n\n",name);
+	array_add(&containers,name);
+	_printf("(name #%s) %s\n",name,name);
+	_printf("(container #%s)\n",name);
+	if(mobile) {
+		array_add(&vehicles,name);
+		_printf("(vehicle #%s)\n",name);
+		_printf("(actor container #%s)\n",name);
+	}
+	if(last_genre == 1)
+		print_female(name);
+}
+void print_object(char* name) {
+	array_add(&objects,name);
+	_printf("(name #%s) %s\n",name,name);
+	print_item(name);
 	if(last_genre == 1)
 		print_female(name);
 }
 void print_player(char* name) {
 	array_add(&objects,name);
-	printf("(current player #%s)\n\n",name);
+	_printf("(current player #%s)\n",name);
 }
-void print_female(char* name) {
-	printf("(female #%s)\n\n",name);
-}
-void print_edible(char* name) {
-	printf("(edible #%s)\n",name);
-}
-void print_open(char* name) {
-	printf("(#%s is open)\n",name);
-}
-void print_close(char* name) {
-	printf("(#%s is closed)\n",name);
-}
-void print_is_in(char* name, char* loc) {
-	printf("(#%s is #in #%s)\n\n",name,loc);
-}
-void print_is_on(char* name, char* loc) {
-	printf("(#%s is #on #%s)\n\n",name,loc);
-}
-void print_descr(char* name, char* str) {
-	printf("(descr #%s) %s\n\n",name,str);
-}
-void print_look(char* name, char* str) {
-	printf("(look #%s) %s\n\n",name,str);
-}
-void print_appearance(char* name, char* str) {
-	printf("(appearance #%s) %s\n\n",name,str);
-}
+void print_female(char* name) {_printf("(female #%s)\n",name);}
+void print_item(char* name) {_printf("(item #%s)\n",name);}
+void print_handled(char* name) {_printf("(#%s is handled)\n",name);}
+void print_edible(char* name) {_printf("(edible #%s)\n",name);}
+void print_wearable(char* name) {_printf("(wearable #%s)\n",name);}
+void print_openable(char* name) {_printf("(openable #%s)\n",name);}
+void print_open(char* name) {_printf("(#%s is open)\n",name);}
+void print_close(char* name) {_printf("(#%s is closed)\n",name);}
+void print_is_in(char* name, char* loc) {_printf("(#%s is #in #%s)\n",name,loc);}
+void print_is_on(char* name, char* loc) {_printf("(#%s is #on #%s)\n",name,loc);}
+void print_descr(char* name, char* str) {_printf("(descr #%s) %s\n",name,str);}
+void print_look(char* name, char* str) {_printf("(look #%s) %s\n",name,str);}
+void print_appearance(char* name, char* str) {_printf("(appearance #%s) %s\n",name,str);}
 char* dirs[] = {"up","in","north","northeast","east","southeast","down","out","south","southwest","west","northwest"};
-void print_fromto(int dir, char* locfrom, char* locto) {
-	printf("(from #%s go #%s to #%s)\n", locfrom, dirs[dir], locto);
-}
+void print_fromto(int dir, char* locfrom, char* locto) {_printf("(from #%s go #%s to #%s)\n", locfrom, dirs[dir], locto);}
 void print_fromtoandback(int dir, char* locfrom, char* locto) {
-	printf("(from #%s go #%s to #%s)\n", locfrom, dirs[dir], locto);
-	printf("(from #%s go #%s to #%s)\n", locto, dirs[(dir+6)%12], locfrom);
+        print_fromto(dir,locfrom,locto);
+        print_fromto((dir+6)%12,locto,locfrom);
 }
+const int actions_count = 1;
+char* actions_it[] = {"mangiare"};
+char* actions_en[] = {"eat"};
+void print_instead_of(char* azione, char* obj1, char* obj2) {
+	char* action = NULL;
+	for(int ct = 0; ct < actions_count; ct++) {
+		if(strcmp(azione,actions_it[ct]) == 0) {
+			action = actions_en[ct];
+			break;
+		}
+	}
+	if(action == NULL) {
+		print_error("AZIONE SCONOSCIUTA",azione);
+		return;
+	}
+	_printf("(instead of [%s %s %s])",action,obj1,obj2);
+}
+void print_plaintext(char* str) {printf("%s ",str);}
 
 }
 
-statement	<-	EOL
-			/ _ EOL
-			/ _ "//" ( !EOL . )* EOL
-			/ _ (
+sentence	<-	EOL	_ EOL IDENT	 { printf("\n"); }
+			/ EOL IDENT
+			/ "//" ( !EOL . )* EOL IDENT
+			/ [Ii] "nvece" SPACE "di" SPACE verb:WORD SPACE "qualcosa" COLON
+				{ print_instead_of(verb,"$",""); }
+			/ (
 			ARTDET
 				(
-					"descrizione" SPACE PREPDI name:WORD { set_last_name((char*)name); }
+					"descrizione" SPACE PREPDI name:WORD { set_last_name(name); }
 					/ ("sua" SPACE)? "descrizione"
 				)
-				SPACE IS QUOTE str:QUOTED QUOTE {
+				SPACE IS str:QUOTED {
 					if(array_contains(&rooms,last_name))
 						print_look(last_name,(char*)str);
 					else
 						print_descr(last_name,(char*)str);
 				}
 			/ ARTDET (
-					"aspetto" SPACE PREPDI name:WORD { set_last_name((char*)name); }
+					"aspetto" SPACE PREPDI name:WORD { set_last_name(name); }
 					/ ("suo" SPACE)? "aspetto"
 				)
-				SPACE IS QUOTE str:QUOTED QUOTE { print_appearance(last_name,(char*)str); }
+				SPACE IS str:QUOTED { print_appearance(last_name,str); }
 			/ ARTDET "giocat" (
 					"ore" {last_genre = 0;}
 					/ "trice" {last_genre = 1;}
-				) SPACE IS name:WORD { set_last_name((char*)name); print_player((char*)name);}
+				) SPACE IS name:WORD { set_last_name(name); print_player(name);}
 			/ (
 				AT dir:DIR PREPDI locfrom:WORD SPACE THEREIS ARTDET locto:WORD
 				/ PREPDA locfrom:WORD SPACE "si" SPACE ("va" / "sale" / "scende" / "entra" / "esce") SPACE
@@ -210,10 +249,10 @@ statement	<-	EOL
 					( ("verso" SPACE)? ARTDET / PREPA / PREPDA) locto:WORD
 				/ ARTDET? locto:WORD SPACE IS AT dir:DIR PREPDI locfrom:WORD
 				) (vice:NOTVICE / vice:VICE) {
-					if(vice) print_fromtoandback(dir, (char*)locfrom, (char*)locto);
-					else print_fromto(dir, (char*)locfrom, (char*)locto);
+					if(vice) print_fromtoandback((int)dir, locfrom, locto);
+					else print_fromto((int)dir, locfrom, locto);
 				}
-			/ ( (ARTDET)? name:WORD { set_last_name((char*)name); } SPACE )? IS
+			/ ( (ARTDET)? name:WORD { set_last_name(name); } SPACE )? IS
 				(
 					(ARTIND "stanza" SPACE { print_room(last_name); } )?
 					(
@@ -223,66 +262,78 @@ statement	<-	EOL
 					)
 					( PREPDI / ARTDET / PREPDA)
 					locto:WORD (vice:NOTVICE / vice:VICE) {
-						if(vice) print_fromtoandback(dir, last_name, (char*)locto);
-						else print_fromto(dir, last_name, (char*)locto);
+						if(vice) print_fromtoandback((int)dir, locto, last_name);
+						else print_fromto((int)dir, locto, last_name);
 					}
 					/ ARTIND (
 						"stanza" 		{ print_room(last_name); }
-						/ "supporto" 	{ print_supporter(last_name); }
-						/ "contenitore" 	{ print_container(last_name); }
-							(SPACE PROPCONTAINER)?
-						/ "oggetto" 	{ print_item(last_name); }
+						/ "veicolo"		{ print_container(last_name, 1); }
+							(SPACE PROPVEHICLE)?
+						/ "supporto" SPACE "mobile"	{ print_supporter(last_name, 1); }
+							(SPACE PROPVEHICLE)?
+						/ "supporto" 	{ print_supporter(last_name, 0); }
 							(SPACE PROPOBJECT)?
+						/ "contenitore" 	{ print_container(last_name, 0); }
+							(SPACE PROPCONTAINER)?
+						/ "oggetto" 	{ print_object(last_name); }
+							(SPACE PROPOBJECT)?
+						/ { print_object(last_name); } PROPOBJECT
 					) (SPACE
 						(
-							PREPIN loc:WORD	{ print_is_in(last_name, (char*)loc); }
-							/ PREPSU loc:WORD	{ print_is_on(last_name, (char*)loc); }
+							PREPIN loc:WORD	{ print_is_in(last_name, loc); }
+							/ PREPSU loc:WORD	{ print_is_on(last_name, loc); }
 						)
 					)?
-					/ PREPIN loc:WORD	{ print_is_in(last_name, (char*)loc); }
-					/ PREPSU loc:WORD	{ print_is_on(last_name, (char*)loc); }
+					/ PREPIN loc:WORD	{ print_is_in(last_name, loc); }
+					/ PREPSU loc:WORD	{ print_is_on(last_name, loc); }
 				)
 			) STOP
-			/ 	< ( !EOL . )* > EOL	{ fprintf(stderr,"\nSYNTAX ERROR=<%s>\n",$1); }
+			/ str:QUOTED ("." _ )?	{ print_plaintext(str); }
+			/ < ( !EOL . )* > EOL	{ print_error("ERRORE DI SINTASSI",(char*)$1); }
 
-LOHI		<-	("alto" {$$ = D_SU;} / "basso" {$$ = D_GIU;}) SPACE
+LOHI		<-	("alto" {$$ = (char*)D_SU;} / "basso" {$$ = (char*)D_GIU;}) SPACE
+INOUT	<-	("dentro" {$$ = (char*)D_DENTRO;} / "fuori" {$$ = (char*)D_FUORI;}) SPACE
+UPDOWN	<-	("sopra" {$$ = (char*)D_GIU;} / "sotto" {$$ = (char*)D_SU;}) SPACE
 
-INOUT	<-	("dentro" {$$ = D_DENTRO;} / "fuori" {$$ = D_FUORI;}) SPACE
+NOTVICE	<-	SPACE ("ma" SPACE "non" SPACE "viceversa" / "senza" SPACE "ritorno") { $$ = (char*)0; }
+VICE		<-	(SPACE ("e" SPACE "viceversa" / "con" SPACE "ritorno"))? { $$ = (char*)1; }
 
-UPDOWN	<-	("sopra" {$$ = D_GIU;} / "sotto" {$$ = D_SU;}) SPACE
-
-NOTVICE	<-	SPACE ("ma" SPACE "non" SPACE "viceversa" / "senza" SPACE "ritorno") { $$ = 0; }
-VICE		<-	(SPACE ("e" SPACE "viceversa" / "con" SPACE "ritorno"))? { $$ = 1; }
-
-DIR	<-	(	"nordest"		{ $$ = D_NORDEST; }
-			/ "nordovest"	{ $$ = D_NORDOVEST; }
-			/ "nord" 		{ $$ = D_NORD; }
-			/ "giù"		{ $$ = D_GIU; }
-			/ "dentro"		{ $$ = D_DENTRO; }
-			/ "fuori"		{ $$ = D_FUORI; }
-			/ "sudest"		{ $$ = D_SUDEST; }
-			/ "sudovest"	{ $$ = D_SUDOVEST; }
-			/ "sud" 		{ $$ = D_SUD; }
-			/ "su"		{ $$ = D_SU; }
-			/ "est"		{ $$ = D_EST; }
-			/ "ovest"		{ $$ = D_OVEST; }
+DIR	<-	(	"nordest"		{ $$ = (char*)D_NORDEST; }
+			/ "nordovest"	{ $$ = (char*)D_NORDOVEST; }
+			/ "nord" 		{ $$ = (char*)D_NORD; }
+			/ "giù"		{ $$ = (char*)D_GIU; }
+			/ "dentro"		{ $$ = (char*)D_DENTRO; }
+			/ "fuori"		{ $$ = (char*)D_FUORI; }
+			/ "sudest"		{ $$ = (char*)D_SUDEST; }
+			/ "sudovest"	{ $$ = (char*)D_SUDOVEST; }
+			/ "sud" 		{ $$ = (char*)D_SUD; }
+			/ "su"		{ $$ = (char*)D_SU; }
+			/ "est"		{ $$ = (char*)D_EST; }
+			/ "ovest"		{ $$ = (char*)D_OVEST; }
 		) SPACE
-				
+
+ADJMALE		<-	"maschile"
+ADJFEMALE	<-	"femminile"	{ print_female(last_name); }
+ADJGENRE		<-	ADJMALE / ADJFEMALE
+
 PROPOBJECT	<-	ADJOBJECT ( ( COMMA / ( SPACE AND ) ) PROPOBJECT )?
-				
 ADJOBJECT	<-	"commestibile"	{ print_edible(last_name); }
-				/ ADJFEMALE
+				/ "portatile"	{ print_item(last_name); }
+				/ "maneggiato"	{ print_handled(last_name); }
+				/ "indossabile"	{ print_wearable(last_name); }
+				/ ADJGENRE
+
+PROPVEHICLE	<-	ADJVEHICLE ( ( COMMA / ( SPACE AND ) ) PROPVEHICLE )?
+ADJVEHICLE	<-	ADJOBJECT
 
 PROPCONTAINER	<-	ADJCONTAINER ( ( COMMA / ( SPACE AND ) ) PROPCONTAINER )?
-
 ADJCONTAINER		<-	"aperto"	{ print_open(last_name); }
 					/ "chiuso"	{ print_close(last_name); }
-					/ ADJFEMALE
+					/ ADJOBJECT
 
-ADJFEMALE	<-	"femminile"	{ print_female(last_name); }
+WORD	<-	< [a-zA-Zàèéìòù]* > { $$ = (char*)$1; }
 
-WORD	<-	< [a-zA-Zàèéìòù]* > { $$ = (int)$1; }
-QUOTED	<-	< [^\"]* > { $$ = (int)$1; }
+QUOTED	<-	QUOTE < [^\"]* > QUOTE { $$ = (char*)$1; }
 
 ARTDETMS	<-	("il"/"lo"/"Il"/"Lo" ) SPACE	{last_genre = 0;}
 ARTDETFS		<-	("la"/"La") SPACE		{last_genre = 1;}
@@ -313,7 +364,9 @@ AND		<-	"e" SPACE
 SPACE	<-	[ \t]+
 QUOTE	<-	_ '\"' _
 COMMA	<-	_ "," _
+COLON	<-	_ ":" _
 STOP	<-	_ "." _
+IDENT	<-	< SPACE > { last_ident = (char*)$1; } / { last_ident = ""; }
 _		<-	[ \t]*
 EOL		<-	"\n" / "\r\n" / "\r"
 

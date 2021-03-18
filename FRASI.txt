@@ -1,8 +1,9 @@
-ESEMPI di FRASI RICONOSCIUTE in "DIALOGO" v 0.03
+
+ESEMPI di FRASI RICONOSCIUTE in "DIALOGO" v 0.04
 
 * Nota:
-Le frasi possono essere precedute da un numero di spazi/tabulazioni arbitrario. Anche all'interno delle frasi il numero di spazi/tabulazioni tra le parole può essere maggiore di uno.
-- Per il momento una frase non può essere spezzata da un ritorno a capo.
+Le frasi possono essere precedute da un numero di spazi/tabulazioni arbitrario. Anche all'interno delle frasi il numero di spazi/tabulazioni tra le parole può essere maggiore di uno. Una frase non può essere spezzata da un ritorno a capo.
+- L'identazione è utile per la definizione di regole.
 
 *Commenti su una singola linea:
 // <segue commento>
@@ -43,13 +44,14 @@ Sono riconosciute e possono determinare il determinano il genere maschile/femmin
 
 Tutte le frasi precedenti possono essere seguite da "senza ritorno" oppure "ma non viceversa".
 
-- L'<oggetto> (femminile/commestibile) è un supporto (in <stanza/contenitore>).
-- L'<oggetto> (femminile/commestibile) è un contenitore (femminile/aperto/chiuso) (su <supporto>).
+- L'<oggetto> è un supporto (in <stanza/contenitore>).
+- L'<oggetto> è un contenitore (aperto/chiuso/apribile) (su <supporto>).
+- L'<oggetto> è un veicolo (in <stanza>).
 
+Tutti gli oggetti riconoscono anche i seguneti aggettivi:
+maschile / femminile / commestibile / portatile / maneggiato 
 
+* Primi tentativi di regole:
 
-
-
-
-
+Invece di mangiare qualcosa: "Non hai fame!".
 

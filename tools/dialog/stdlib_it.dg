@@ -1,9 +1,20 @@
 
 (library version)
-	Library version 0.46 IT 0.03. %%*&& Library version 0.46.
+	Library version 0.46 IT 0.04. %%*&& Library version 0.46.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Italian Language specific code
+
+%% Regole in italiano
+
+(interface (a capo))
+(a capo) (line)
+(interface (spazio))
+(spazio) (space)
+(interface ($<Number spazi))
+($n spazi) (space $n)
+(interface (paragrafo))
+(paragrafo) (par)
 
 %% Comandi alternativi
 

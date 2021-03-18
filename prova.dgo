@@ -3,14 +3,17 @@ Il giocatore è Pippo. Pippo è nella cucina.
 
 La cucina è una stanza. La sua descrizione è "Un'ampia cucina.".
 Il salotto è una stanza. La descrizione del salotto è "Un elegante salotto.".
-La camera è una stanza. La sua descrizione è "Un comoda camera.".
+La camera è una stanza. La sua descrizione è "Una comoda camera.".
 La soffitta è una stanza. La sua descrizione è "Una soffitta buia.".
 La tavernetta è una stanza. La descrizione è "Un'accogliente tavernetta.".
 La cantina è una stanza. La descrizione è "Una cantina buia.".
 
-Il salotto è a nord della cucina.
+Il salotto è a nord della cucina.//commento
 La camera è a sud della cucina.
 
+//commento
+	//commento
+	
 Dalla camera si va giù verso la cantina.
 
 Dalla camera si va a sud verso la tavernetta ma non viceversa.
@@ -21,4 +24,14 @@ La caverna è una stanza sotto la grotta. La sua descrizione è "Una grotta molt
 
 Il tavolo è un supporto nella cucina. La descrizione è "Un ottimo tavolo.".
 L'aspetto è "Un tavolo fa bella mostra di sé.".
-La scatola è un contenitore aperto sul tavolo. La descrizione della scatola è "Una bella scatola rossa".
+La scatola è un contenitore aperto e portatile sul tavolo. La descrizione della scatola è "Una bella scatola rossa".
+La mela è un oggetto commestibile nella scatola. La descrizione è "Sembra appetitosa.".
+
+Il monopattino è un supporto mobile portatile e maneggiato nella cucina.
+L'attaccapanni è un supporto nella cucina.
+Il cappotto è un indossabile sull'attaccapanni.
+
+Invece di mangiare qualcosa: 	"Non hai fame!"  "Neppure un po'." . 
+
+Il garage è una stanza a ovest della cucina. L'automobile è un veicolo femminile nel garage. La descrizione è "Un'automobile sportiva.".
+Il giardino è una stanza a ovest del garage.
