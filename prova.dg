@@ -1,39 +1,117 @@
-(current player #Pippo)
+
+%%La strada, il cortile, il magazzino e il vicolo sono stanze.
+%%La strada è a nord del cortile, a est del magazzino e a sud del vicolo.
+%%Dalla strada si va a nord verso il cortile senza ritorno, a est verso il magazzino e a sud verso il vicolo ma non viceversa.
+
+(story title) Prova 
+(story noun) Un'avventura di prova 
+(story blurb) Proviamo se funziona 
+(story ifid) BE7F46CE-351C-4E33-A314-10A1DB44155B 
+(story author) Leonardo Boselli 
+(story release 5)
+
+(name #Pippo) Pippo
+(animate #Pippo)
+(proper #Pippo)
 (#Pippo is #in #cucina)
+
+(name #Pluto) Pluto
+(animate #Pluto)
+(proper #Pluto)
+(#Pluto is #in #cucina)
+
+(current player #Pippo)
+
+(name #tavolino) tavolino
+(supporter #tavolino)
+(name #mensola) mensola
+(supporter #mensola)
+(female #mensola)
+(#tavolino is #in #cucina)
+(#mensola is #in #cucina)
+
+(name #credenza) credenza
+(container #credenza)
+(female #credenza)
+(#credenza is open)
+(openable #credenza)
+(descr #credenza) Una capiente credenza. La credenza è (open or closed #credenza). 
+(#credenza is #in #cucina)
+
+(name #mango) mango
+(name #papaja) papaja
+(female #papaja)
+(item #mango)
+(item #papaja)
+(edible #mango)
+(edible #papaja)
+(#mango is #in #credenza)
+(#papaja is #in #credenza)
+
+(name #pera) pera
+(female #pera)
+(item #pera)
+(#pera is #in #cucina)
+
+(name #sedia) sedia
+(female #sedia)
+(name #sedile) sedile
+(on-seat #sedia)
+(on-seat #sedile)
+(#sedia is #in #cucina)
+(#sedile is #in #cucina)
 
 (name #cucina) cucina
 (room #cucina)
 (female #cucina)
-(look #cucina) Un'ampia cucina.
+(look #cucina) Un'ampia cucina. 
 (name #salotto) salotto
 (room #salotto)
-(look #salotto) Un elegante salotto.
+(inherently dark #salotto)
+(look #salotto) Un elegante salotto. 
 (name #camera) camera
 (room #camera)
 (female #camera)
-(look #camera) Una comoda camera.
+(look #camera) Una comoda camera. 
 (name #soffitta) soffitta
 (room #soffitta)
 (female #soffitta)
-(look #soffitta) Una soffitta buia.
+(look #soffitta) Una soffitta buia. 
 (name #tavernetta) tavernetta
 (room #tavernetta)
 (female #tavernetta)
-(look #tavernetta) Un'accogliente tavernetta.
+(look #tavernetta) Un'accogliente tavernetta. 
 (name #cantina) cantina
 (room #cantina)
 (female #cantina)
-(look #cantina) Una cantina buia.
+(look #cantina) Una cantina buia. 
+(name #lampada) lampada
+(female #lampada)
+(item #lampada)
+(#lampada provides light) (#lampada is on)
+(switchable #lampada)
+(#lampada is #in #cucina)
+(descr #lampada) Una lampada {(#lampada is open) acces(oaie #lampada) (or) spent(oaie #lampada)}. 
+(name #torcia) torcia
+(female #torcia)
+(item #torcia)
+(#torcia provides light)
+(#torcia is #in #cucina)
 
 (from #cucina go #north to #salotto)
 (from #salotto go #south to #cucina)
+%%commento
 (from #cucina go #south to #camera)
 (from #camera go #north to #cucina)
+
+%% commento
+%%commento
 
 (from #camera go #down to #cantina)
 (from #cantina go #up to #camera)
 
 (from #camera go #south to #tavernetta)
+
 (from #camera go #up to #soffitta)
 
 (name #grotta) grotta
@@ -41,33 +119,30 @@
 (female #grotta)
 (from #cantina go #up to #grotta)
 (from #grotta go #down to #cantina)
-(look #grotta) Una grotta molto buia.
+(look #grotta) Una grotta molto buia. 
 (name #caverna) caverna
 (room #caverna)
 (female #caverna)
 (from #grotta go #up to #caverna)
 (from #caverna go #down to #grotta)
-(look #caverna) Una grotta molto buia.
-
+(look #caverna) Una grotta molto buia. 
 (name #tavolo) tavolo
 (supporter #tavolo)
 (#tavolo is #in #cucina)
-(descr #tavolo) Un ottimo tavolo.
-(appearance #tavolo) Un tavolo fa bella mostra di sé.
+(descr #tavolo) Un ottimo tavolo. 
+(appearance #tavolo) Un tavolo fa bella mostra di sé. 
 (name #scatola) scatola
 (container #scatola)
 (female #scatola)
 (#scatola is open)
 (item #scatola)
 (#scatola is #on #tavolo)
-(descr #scatola) Una bella scatola rossa
+(descr #scatola) Una bella scatola rossa 
 (name #mela) mela
-(item #mela)
 (female #mela)
 (edible #mela)
 (#mela is #in #scatola)
-(descr #mela) Sembra appetitosa.
-
+(descr #mela) Sembra appetitosa. 
 (name #monopattino) monopattino
 (supporter #monopattino)
 (vehicle #monopattino)
@@ -75,15 +150,21 @@
 (item #monopattino)
 (#monopattino is handled)
 (#monopattino is #in #cucina)
+
 (name #attaccapanni) attaccapanni
 (supporter #attaccapanni)
 (#attaccapanni is #in #cucina)
+
 (name #cappotto) cappotto
-(item #cappotto)
 (wearable #cappotto)
 (#cappotto is #on #attaccapanni)
 
-(instead of [eat $ ])Non hai fame! Neppure un po'. 
+%%Rifiuta di mangiare qualcosa: "Non puoi mangiare!".
+%%Impedisci di mangiare qualcosa: "Ti impedisco!".
+(before [eat $ ]) Prima ti lavi le mani. 
+(after [eat $ ]) Dopo ringrazi. 
+(perform [eat $ ]) Mangi. 
+(instead of [eat $ ]) Non hai fame! Neppure un po'. 
 (name #garage) garage
 (room #garage)
 (from #cucina go #west to #garage)
@@ -94,8 +175,9 @@
 (actor container #automobile)
 (female #automobile)
 (#automobile is #in #garage)
-(descr #automobile) Un'automobile sportiva.
+(descr #automobile) Un'automobile sportiva. 
 (name #giardino) giardino
 (room #giardino)
 (from #garage go #west to #giardino)
 (from #giardino go #east to #garage)
+

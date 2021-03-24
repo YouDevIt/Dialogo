@@ -3,16 +3,22 @@
 #ifndef PCC_INCLUDED_DIALOGO_H
 #define PCC_INCLUDED_DIALOGO_H
 
+
+// Dialogo v 0.05
+
 void init();
 void final();
 
-struct Array {int size; int len; char** data;};
+struct Array {int size; int len; char **strings; int *arg1; int *arg2; int *arg3;};
 
 void array_init(struct Array *array, int size);
 void array_free(struct Array *array);
-char* array_add(struct Array *array, char* str);
-char* array_get(struct Array *array, int idx);
-int array_contains(struct Array *array, char* str);
+int array_add(struct Array *array, char *str, int arg1, int arg2, int arg3);
+char *array_getstring(struct Array *array, int idx);
+int array_getarg1(struct Array *array, int idx);
+int array_getarg2(struct Array *array, int idx);
+int array_getarg3(struct Array *array, int idx);
+int array_contains(struct Array *array, char *str);
 
 const int D_NORDEST = 3;
 const int D_NORDOVEST = 11;
@@ -27,30 +33,23 @@ const int D_DENTRO = 1;
 const int D_EST = 4;
 const int D_OVEST = 10;
 
-void print_start();
-void print_final();
-void print_ident();
-void _printf(const char* fmt, ...);
-void print_room(char* name);
-void print_supporter(char* name, int mobile);
-void print_container(char* name, int mobile);
-void print_object(char* name);
-void print_item(char* name);
-void print_handled(char* name);
-void print_wearable(char* name);
-void print_female(char* name);
-void print_edible(char* name);
-void print_openable(char* name);
-void print_open(char* name);
-void print_close(char* name);
-void print_is_in(char* name, char* loc);
-void print_is_on(char* name, char* loc);
-void print_descr(char* name, char* str);
-void print_look(char* name, char* str);
-void print_fromto(int dir, char* locfrom, char* locto);
-void print_fromtoandback(int dir, char* locfrom, char* locto);
-void print_instead_of(char* azione, char* obj1, char* obj2);
-void print_plaintext(char* str);
+void p_start();
+void p_final();
+void _pindent(const char *fmt, ...);
+void p_prop_val(char *prop, char* obj, char *val);
+void p_prop(char *prop, char *obj);
+void p_is_prop(char *prop, char *obj);
+void p_room(char *name, int genre, int plural, int proper);
+void p_supporter(char *name, int genre, int plural, int proper, int mobile);
+void p_container(char *name, int genre, int plural, int proper, int mobile);
+void p_person(char *name, int genre, int plural, int proper);
+void p_object(char *name, int genre, int plural, int proper);
+void p_is_in(char *name, char *loc);
+void p_is_on(char *name, char *loc);
+void p_fromto(int dir, char *locfrom, char *locto);
+void p_fromtoandback(int dir, char *locfrom, char *locto);
+void p_action(char* handler, char *azione, char *obj1, char *obj2);
+void p_plaintext(char *str);
 
 
 #ifdef __cplusplus

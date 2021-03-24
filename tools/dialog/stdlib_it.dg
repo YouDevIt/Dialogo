@@ -1,6 +1,6 @@
 
 (library version)
-	Library version 0.46 IT 0.04. %%*&& Library version 0.46.
+	Library version 0.46 IT 0.05. %%*&& Library version 0.46.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Italian Language specific code
@@ -11,6 +11,8 @@
 (a capo) (line)
 (interface (spazio))
 (spazio) (space)
+(interface (unito))
+(unito) (no space)
 (interface ($<Number spazi))
 ($n spazi) (space $n)
 (interface (paragrafo))
@@ -18,41 +20,8 @@
 
 %% Comandi alternativi
 
-(perform [inventory])
-    (current player $Player)
-    (if) ($ is #heldby $Player) (then)
-        Hai: (line)
-        (list objects #heldby $Player indented 4)
-    (else)
-        Non hai nulla.
-    (endif)
-    (if) ($ is #wornby $Player) (then)
-	Indossi: (line)
-	(list objects #wornby $Player indented 4)
-    (endif)
-
-(list objects $Rel $Loc indented $I)
-    ($I plus 4 into $NextI)
-    (exhaust) {
-        *($Obj is $Rel $Loc)
-        (space $I) (a $Obj) (line)
-	{($Obj is open) (or) ~(opaque $Obj)}
-        (list objects $ $Obj indented $NextI)
-    }
-
-(perform [look])
-	(current player $Player)
-	($Player is $Rel $Loc)
-	(div @roomheader) (location headline)
-	(if) (player can see) (then)
-		(current scope ceiling $Ceil)
-		(look $Ceil)
-		(make appearances $Rel $Loc)
-		(par)
-		(perform [exits])
-	(else)
-		(narrate darkness)
-	(endif)
+(after [look])
+	(perform [exits])
 
 %% rimuovere apostrofi
 
@@ -80,6 +49,7 @@
 (the $Obj)		(art-det $Obj)
 
 (interface (art-det $<Obj))
+(art-det $Obj)	(proper $Obj) (name $Obj)
 (art-det $Obj)
 	(art-case $Obj $case)
 	{ (plural $Obj)
@@ -148,18 +118,23 @@
 (prep []) (space) qualcosa che non c'è
 
 (interface (prep-di $<Obj))
+(prep-di $Obj)	(proper $Obj) di (name $Obj)
 (prep-di $Obj)	de (no space) (prep $Obj)
 
 (interface (prep-a $<Obj))
+(prep-a $Obj)	(proper $Obj) a (name $Obj)
 (prep-a $Obj)	a (no space) (prep $Obj)
 
 (interface (prep-da $<Obj))
+(prep-da $Obj)	(proper $Obj) da (name $Obj)
 (prep-da $Obj)	da (no space) (prep $Obj)
 
 (interface (prep-in $<Obj))
+(prep-in $Obj)	(proper $Obj) in (name $Obj)
 (prep-in $Obj)	ne (no space) (prep $Obj)
 	
 (interface (prep-su $<Obj))
+(prep-su $Obj)	(proper $Obj) su (name $Obj)
 (prep-su $Obj)	su (no space) (prep $Obj)
 
 (interface (prep $<Rel $<Obj))
@@ -243,7 +218,7 @@
 
 (sta $Obj)	sta { (plural $Obj) (no space) nno (or) }
 
-(può $Obj)	{ (plural $Obj) possono (or) }
+(può $Obj)	{ (plural $Obj) possono (or) può }
 
 (toglie $Obj)	{ (plural $Obj) tolgono (or) toglie }
 
@@ -1117,6 +1092,8 @@
 %% they were last encountered. This will usually put the player on the expected
 %% side of doors.
 
+(grammar [trova il/lo/la/i/gli/le/l [any]] for [find $]) 	%%*&&
+(grammar [cerca il/lo/la/i/gli/le/l [any]] for [find $]) 	%%*&&
 (grammar [trova [any]] for [find $]) 	%%*&& [find [any]]
 (grammar [cerca [any]] for [find $]) 	%%*&& [look/l for [any]]
 
@@ -1841,7 +1818,7 @@
 
 (prevent [exits])
 	~(player can see)
-	Al buio, non puoi sapere dove siano le uscite. 	%%*&& You can't be sure of where the exits are in the darkness.
+	Al buio non puoi sapere dove siano le uscite. 	%%*&& You can't be sure of where the exits are in the darkness.
 
 (perform [exits])
 	(current room $Room)
@@ -1857,12 +1834,12 @@
 		Le uscite visibili: 	%%*&& Obvious exits are:
 		(exhaust) {
 			*(from $Room go $Dir to $Target)
-			(direction $Dir)
+			(uppercase)(direction $Dir)
 			(if) (door $Target) (or) (room $Target) (then)
 				(if) (library links enabled) (then)
 					(link) (name $Dir)
 				(else)
-					\* (name $Dir)	%%*&& (name $Dir)
+					(name $Dir)	%%*&& (name $Dir)
 				(endif)
 				(if) (door $Target) (then)
 					attraverso (the $Target) 	%%*&& through 
@@ -1876,7 +1853,7 @@
 				(else)
 					(describe remote room $Target)
 				(endif)
-					%%*&& .
+					.
 			(endif)
 		}
 	(endif)
@@ -4927,7 +4904,7 @@
 	(The $O is) a (name $Dir) di qui. 	%%*&& from here.
 
 (descr $Obj)
-	Sembr (are-3-pres $Obj) innocu (oaie $Obj). %%*&& (It $Obj) seem(s $Obj) to be harmless. 	%%*&& seem %% to be harmless.
+	Non noti nulla di speciale (prep-in $Obj).	%%*&& (It $Obj) seem(s $Obj) to be harmless.
 
 (look $Obj)
 	(descr $Obj)
@@ -5136,7 +5113,7 @@
 	(if) ($Rel is one of [#under #behind]) (then)
 		Andare (name $Rel) (the $O) non ha scopo. 	%%*&& Going  %% would achieve little.
 	(else)
-		Non è possibile andare (towards-name $Rel) (the $O). 	%%*&& It's not possible to get  %% .
+		Non è possibile { ($Rel = #in) entrare (or) ($Rel = #out) uscire (or) andare} (towards-name $Rel) (the $O). 	%%*&& It's not possible to get  %% .
 	(endif)
 
 (when $O is already $Rel $Dest)
