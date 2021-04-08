@@ -1,5 +1,5 @@
 
-ESEMPI di FRASI RICONOSCIUTE in "DIALOGO" v 0.05
+ESEMPI di FRASI RICONOSCIUTE in "DIALOGO" v 0.05 (da aggiornare)
 
 * Nota:
 Le frasi possono essere precedute da un numero di spazi/tabulazioni arbitrario. Anche all'interno delle frasi il numero di spazi/tabulazioni tra le parole può essere maggiore di uno. Una frase non può essere spezzata da un ritorno a capo.
