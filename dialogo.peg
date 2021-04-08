@@ -1,9 +1,9 @@
 
+# Dialogo v 0.06
+
 %value "char *"
 
 %header {
-
-// Dialogo v 0.05
 
 void init();
 void final();
@@ -35,19 +35,20 @@ const int D_OVEST = 10;
 void p_start();
 void p_final();
 void _pindent(const char *fmt, ...);
-void p_prop_val(char *prop, char* obj, char *val);
-void p_prop(char *prop, char *obj);
-void p_is_prop(char *prop, char *obj);
+void p_cmd_val(char *cmd, char *val, int ret);
+void p_cmd(char *cmd, int ret);
+void p_prop_val(char *prop, char* obj, char *val, int ret);
+void p_prop(char *prop, char *obj, int ret);
+void p_is_prop(char *prop, char *obj, int ret);
 void p_room(char *name, int genre, int plural, int proper);
 void p_supporter(char *name, int genre, int plural, int proper, int mobile);
 void p_container(char *name, int genre, int plural, int proper, int mobile);
 void p_person(char *name, int genre, int plural, int proper);
 void p_object(char *name, int genre, int plural, int proper);
-void p_is_in(char *name, char *loc);
-void p_is_on(char *name, char *loc);
+void p_is_rel(char *name, char *loc, char *rel, int ret);
 void p_fromto(int dir, char *locfrom, char *locto);
 void p_fromtoandback(int dir, char *locfrom, char *locto);
-void p_action(char* handler, char *azione, char *obj1, char *obj2);
+void p_action(char* handler, char *azione, char *obj1, char *obj2, char *prep);
 void p_plaintext(char *str);
 
 }
@@ -58,16 +59,87 @@ void p_plaintext(char *str);
 #include <stdlib.h>
 #include <string.h>
 
+/*
+static const char *dbg_str[] = { "Evaluating rule", "*Matched rule", "Abandoning rule" };
+#define PCC_DEBUG(event, rule, level, pos, buffer, length) \
+    fprintf(stderr, "%*s%s %s @%d [%.*s]\n", level * 2, "", dbg_str[event], rule, pos, length, buffer)
+*/
+
 struct Array rooms, objects, persons, containers, supporters, vehicles;
+
+struct Array newActCmd, newActInf, newActPP, newActPrep;
 
 struct Array last_list1, last_list2, last_list3;
 
 char *last_name = NULL;
+char *last_name2 = NULL;
+char *last_name3 = NULL;
+char *last_locfrom = NULL;
+char *last_locto = NULL;
+char *last_loc = NULL;
 char *last_indent = NULL;
+
+void set_string(char **storage, char *str) {
+	if(*storage != NULL)
+		free(*storage);
+	if(str == NULL)
+		*storage = NULL;
+	else
+		*storage = strdup(str);
+}
+void set_extstring(char **storage, char prefix, char *str) {
+	if(*storage != NULL)
+		free(*storage);
+	if(str == NULL)
+		*storage = NULL;
+	else {
+		*storage = malloc(sizeof(char)*strlen(str)+2);
+		**storage = prefix;
+		strcpy(*(storage)+1,str);
+	}
+}
+void set_objorvar(char** storage, char *word) {
+	int isvar = 1;
+	for(int ct = 0; ct < strlen(word); ct++) {
+		char ch = word[ct];
+		if(ch != '_' && (ch < 'A' || ch > 'Z' )) {
+			isvar = 0;
+			break;
+		}
+	}
+	if(isvar)
+		set_extstring(storage,'$',word);
+	else
+		set_extstring(storage,'#',word);
+}
+void set_varnum(char** storage, char *word) {
+	int isnum = 1;
+	for(int ct = 0; ct < strlen(word); ct++) {
+		char ch = word[ct];
+		if(ch < '0' || ch > '9' ) {
+			isnum = 0;
+			break;
+		}
+	}
+	if(isnum)
+		set_string(storage,word);
+	else
+		set_extstring(storage,'$',word);
+}
+void set_name(char *word) {set_objorvar(&last_name,word);}
+void set_name2(char *word) {set_objorvar(&last_name2,word);}
+void set_name3(char *word) {set_objorvar(&last_name3,word);}
+void set_varornum2(char *word) {set_varnum(&last_name2,word);}
+void set_varornum3(char *word) {set_varnum(&last_name3,word);}
+void set_locfrom(char *word) {set_objorvar(&last_locfrom,word);}
+void set_locto(char *word) {set_objorvar(&last_locto,word);}
+void set_loc(char *word) {set_objorvar(&last_loc,word);}
 
 int last_genre = 0;
 int last_plural = 0;
 int last_proper = 0;
+
+int ret_mode = 1;
 
 void array_init(struct Array *array, int size) {
 	array->size = size;
@@ -117,6 +189,10 @@ int array_contains(struct Array* array, char *str) {
 }
 
 void init() {
+	array_init(&newActCmd,5);
+	array_init(&newActInf,5);
+	array_init(&newActPP,5);
+	array_init(&newActPrep,5);
 	array_init(&last_list1,5);
 	array_init(&last_list2,5);
 	array_init(&last_list3,5);
@@ -140,18 +216,25 @@ void final() {
 	array_free(&last_list1);
 	array_free(&last_list2);
 	array_free(&last_list3);
+	array_free(&newActCmd);
+	array_free(&newActInf);
+	array_free(&newActPP);	
+	array_free(&newActPrep);	
 }
 
-void set_string(char **var, char *str) {
-	if(*var != NULL)
-		free(*var);
-	if(str == NULL)
-		*var = NULL;
-	else
-		*var = strdup(str);
+void print_replacing_space(char *str){
+	for(int ct = 0; ct < strlen(str); ct++) {
+		char ch = *(str+ct);
+		if(ch == '_') printf(" ");
+		else printf("%c",ch);
+	}
 }
+void print_name(char *str) { _pindent("(name %s) ",str); print_replacing_space(str+1); printf("\n"); }
 
-void p_error(char *type, char *msg) {fprintf(stderr,"\n%s=<%s>\n",type,msg);}
+void p_error(char *type, char *msg) {
+	fprintf(stderr,"\n%s=<%s>\n",type,msg);
+	printf("\n%%%%%s=<%s>\n",type,msg);
+}
 void p_start() {}
 void p_final() {}
 void _pindent(const char *format, ...) {
@@ -162,256 +245,608 @@ void _pindent(const char *format, ...) {
    vfprintf(stdout, format, arg);
    va_end (arg);
 }
-void p_cmd_val(char *cmd, char* val) { printf("(%s) %s ",cmd,val); }
-void p_cmd(char *cmd) { printf("(%s)\n",cmd); }
-void p_prop_val(char *prop, char* obj, char *val) { printf("(%s #%s) %s ",prop,obj,val); }
-void p_prop(char *prop, char* obj) { printf("(%s #%s)\n",prop,obj); }
-void p_is_prop(char *prop, char *obj) { printf("(#%s is %s)\n",obj,prop); }
+void p_cmd_val(char *cmd, char* val, int ret) { printf("(%s) %s ",cmd,val); if(ret) printf("\n"); }
+void p_cmd(char *cmd, int ret) { printf("(%s)",cmd); if(ret) printf("\n");}
+void p_prop_val(char *prop, char* obj, char *val, int ret) { printf("(%s %s) %s ",prop,obj,val); if(ret) printf("\n"); }
+void p_prop(char *prop, char* obj, int ret) { printf("(%s %s)",prop,obj); if(ret) printf("\n"); }
+void p_is_prop(char *prop, char *obj, int ret) { printf("(%s is %s)",obj,prop); if(ret == 1) printf("\n"); }
 void p_nameprops(char* name, int genre, int plural, int proper) {
-	if(genre == 1) p_prop("female",name);
-	if(plural == 1) p_prop("plural",name);
-	if(proper == 1) p_prop("proper",name);
+	if(genre == 1) {p_prop("female",name,1);}
+	if(plural == 1) {p_prop("plural",name,1);}
+	if(proper == 1) {p_prop("proper",name,1);}
 }
 void p_room(char *name, int genre, int plural, int proper) {
 	array_add(&rooms,name,genre,plural,proper);
-	_pindent("(name #%s) %s\n",name,name);
-	_pindent("(room #%s)\n",name);
+	print_name(name);
+	_pindent("(room %s)\n",name);
 	p_nameprops(name,genre,plural,proper);
 }
 void p_supporter(char *name, int genre, int plural, int proper, int mobile) {
 	array_add(&objects,name,genre,plural,proper);
 	array_add(&supporters,name,genre,plural,proper);
-	_pindent("(name #%s) %s\n",name,name);
-	_pindent("(supporter #%s)\n",name);
+	print_name(name);
+	_pindent("(supporter %s)\n",name);
 	if(mobile) {
 		array_add(&vehicles,name,genre,plural,proper);
-		_pindent("(vehicle #%s)\n",name);
-		_pindent("(actor supporter #%s)\n",name);
+		_pindent("(vehicle %s)\n",name);
+		_pindent("(actor supporter %s)\n",name);
 	}
 	p_nameprops(name,genre,plural,proper);
 }
 void p_container(char *name, int genre, int plural, int proper, int mobile) {
 	array_add(&objects,name,genre,plural,proper);
 	array_add(&containers,name,genre,plural,proper);
-	_pindent("(name #%s) %s\n",name,name);
-	_pindent("(container #%s)\n",name);
+	print_name(name);
+	_pindent("(container %s)\n",name);
 	if(mobile) {
 		array_add(&vehicles,name,genre,plural,proper);
-		_pindent("(vehicle #%s)\n",name);
-		_pindent("(actor container #%s)\n",name);
+		_pindent("(vehicle %s)\n",name);
+		_pindent("(actor container %s)\n",name);
 	}
 	p_nameprops(name,genre,plural,proper);
 }
 void p_person(char *name, int genre, int plural, int proper) {
 	array_add(&objects,name,genre,plural,proper);
 	array_add(&persons,name,genre,plural,proper);
-	_pindent("(name #%s) %s\n",name,name);
-	_pindent("(animate #%s)\n",name);
+	print_name(name);
+	_pindent("(animate %s)\n",name);
 	p_nameprops(name,genre,plural,proper);
 }
 void p_object(char *name, int genre, int plural, int proper) {
 	array_add(&objects,name,genre,plural,proper);
-	_pindent("(name #%s) %s\n",name,name);
+	print_name(name);
 	p_nameprops(name,genre,plural,proper);
 }
-void p_player(char *name) { _pindent("(current player #%s)\n",name); }
-void p_is_in(char *name, char *loc) {_pindent("(#%s is #in #%s)\n",name,loc);}
-void p_is_on(char *name, char *loc) {_pindent("(#%s is #on #%s)\n",name,loc);}
+void p_is_rel(char *name, char *rel, char *loc, int ret) {_pindent("(%s is #%s %s)",name,rel,loc); if(ret == 1) printf("\n"); }
 char *dirs[] = {"up","in","north","northeast","east","southeast","down","out","south","southwest","west","northwest"};
-void p_fromto(int dir, char *locfrom, char *locto) {_pindent("(from #%s go #%s to #%s)\n", locfrom, dirs[dir], locto);}
+void p_fromto(int dir, char *locfrom, char *locto) {_pindent("(from %s go #%s to %s)\n", locfrom, dirs[dir], locto);}
 void p_fromtoandback(int dir, char *locfrom, char *locto) {
         p_fromto(dir,locfrom,locto);
         p_fromto((dir+6)%12,locto,locfrom);
 }
-const int actions_count = 1;
-char *actions_it[] = {"mangi"}; //mangiare-mangiato
-char *actions_en[] = {"eat"};
-void p_action(char* handler, char *azione, char *obj1, char *obj2) {
+const int actions_count = 65;
+char *actions_it[] = {
+	"abbracciare","accendere","agitare","alzarsi","andare","aprire","annusare","ascoltare","aspettare","assaggiare",
+	"attaccare","baciare","ballare","bere","bloccare","cantare","cercare","chiamare","chiedere","chiudere",
+	"consultare","dare","dire","dormire","entrare","esaminare","girare","gridare","guardare","imprecare",
+	"indossare","inventariare","lanciare","lasciare","leggere","mangiare","mappare","mettere","morsicare","mostrare",
+	"nuotare","parlare","pensare","pregare","prendere","pulire","raccogliere","riparare","salire","saltare",
+	"salutare","sbloccare","scaricare","sedersi","spegnere","spingere","spremere","svegliarsi","tagliare","tirare",
+	"toccare","togliere","trovare","uscire","volare"
+};
+char *actions_it_pp[] = {
+	"abbracciato","acceso","agitato","alzato","andato","aperto","annusato","ascoltato","aspettato","assaggiato",
+	"attaccato","baciato","ballato","bevuto","bloccato","cantato","cercato","chiamato","chiesto","chiuso",
+	"consultato","dato","detto","dormito","entrato","esaminato","girato","gridato","guardato","imprecato",
+	"indossato","inventariato","lanciato","lasciato","letto","mangiato","mappato","messo","morsicato","mostrato",
+	"nuotato","parlato","pensato","pregato","preso","pulito","raccolto","riparato","salito","saltato",
+	"salutato","sbloccato","scaricato","seduto","spento","spinto","spremuto","svegliato","tagliato","tirato",
+	"toccato","tolto","trovato","uscito","volato"
+};
+char *actions_en[] = {
+	"hug","switch on","wave","stand","go","open","smell","listen","wait","taste",
+	"attack","kiss","dance","drink","lock","sing","search","call","ask","close",
+	"consult","give","tell","sleep","enter","examine","turn","shout","look","curse",
+	"wear","inventory","throw","drop","read","eat","exits","put","bite","show",
+	"swim","talk","think","pray","take","clean","pick up","fix","climb","jump",
+	"greet","unlock","flush","sit on","switch off","push","squeeze","wake up","cut","pull",
+	"feel","remove","find","leave","fly"
+};
+const int actprep_count = 4;
+char *prep_en(char* prep) {
+	if(prep) {
+		if(strcmp(prep,"su") == 0) return "#on";
+		else if(strcmp(prep,"in") == 0) return "#in";
+		else if(strcmp(prep,"dietro") == 0) return "#behind";
+		else if(strcmp(prep,"sotto") == 0) return "#under";
+		else if(strcmp(prep,"a") == 0) return "to";
+	}
+	return "";
+}
+char *prep_it(char* prep) {
+	if(prep) {
+		if(strcmp(prep,"su") == 0) return "su/sul/sull/sullo/sulla/sui/sugli/sulle";
+		else if(strcmp(prep,"in") == 0) return " in/nel/nell/nello/nella/nei/negli/nelle/dentro/attraverso";
+		else if(strcmp(prep,"dietro") == 0) return "dietro";
+		else if(strcmp(prep,"sotto") == 0) return "sotto";
+		else if(strcmp(prep,"a") == 0) return "a/al/all/allo/alla/ai/agli/alle";
+	}
+	return "";
+}
+char *verb_en(char *verb_it) {
 	char *action = NULL;
 	for(int ct = 0; ct < actions_count; ct++) {
-		if(strncmp(azione,actions_it[ct],strlen(actions_it[ct])) == 0) {
+		if(strcmp(verb_it,actions_it[ct]) == 0) {
 			action = actions_en[ct];
 			break;
 		}
 	}
 	if(action == NULL) {
-		p_error("AZIONE SCONOSCIUTA",azione);
-		return;
+		for(int ct = 0; ct < newActCmd.len; ct++) {
+			if(strcmp(verb_it,newActInf.strings[ct]) == 0) {
+				action = newActInf.strings[ct];
+				break;
+			}
+		}
+		if(action == NULL)
+			return "SCONOSCIUTO";
 	}
-	_pindent("(%s [%s %s %s]) ",handler,action,obj1,obj2);
+	return action;
+}
+void p_action(char* handler, char *azione, char *obj1, char *obj2, char *prep) {
+	char *action = NULL;
+	if(strcmp(handler,"after")==0) {
+		for(int ct = 0; ct < actions_count; ct++) {
+			if(strcmp(azione,actions_it_pp[ct]) == 0) {
+				action = actions_en[ct];
+				break;
+			}
+		}
+	} else {
+		for(int ct = 0; ct < actions_count; ct++) {
+			if(strcmp(azione,actions_it[ct]) == 0) {
+				action = actions_en[ct];
+				break;
+			}
+		}
+	}
+	if(action == NULL) {
+		if(strcmp(handler,"after")==0) {
+			for(int ct = 0; ct < newActCmd.len; ct++) {
+				if(strcmp(newActPP.strings[ct],"") == 0) {
+					char *inf = newActInf.strings[ct];
+					if(strncmp(azione,inf,strlen(inf)-2) == 0) {
+						action = newActInf.strings[ct];
+						break;
+					}
+				} else {
+					if(strcmp(azione,newActPP.strings[ct]) == 0) {
+						action = newActInf.strings[ct];
+						break;
+					}
+				}
+			}
+		} else {
+			for(int ct = 0; ct < newActCmd.len; ct++) {
+				if(strcmp(azione,newActInf.strings[ct]) == 0) {
+					action = newActInf.strings[ct];
+					break;
+				}
+			}
+		}
+		if(action == NULL) {
+			p_error("AZIONE SCONOSCIUTA",azione);
+			return;
+		}
+	}
+	_pindent("(%s [%s %s %s %s]) ",handler,action,obj1,prep? prep_en(prep): "",obj2);
+}
+void add_action(char *cmd, int args, char *inf, char *pp, char *prep) {
+	array_add(&newActCmd,cmd,0,0,0);
+	array_add(&newActInf,inf,0,0,0);
+	array_add(&newActPP,pp? pp: "",0,0,0);
+	array_add(&newActPrep,prep? prep: "",0,0,0);
+	printf("(grammar [%s %s %s %s] for [%s %s %s %s])",
+		cmd,args>0?"[object]":"",prep? prep_it(prep): "",args>1?"[object]":"",
+		inf,args>0?"$":"",prep? prep_en(prep): "",args>1?"$":"");
 }
 void p_plaintext(char *str) {printf("%s ",str);}
 
 }
 
-sentence	<-	EOL	_ EOL INDENT	{ printf("\n"); }
-			/ EOL INDENT		{ printf("\n"); }
-			/ "//" last:TILLEND EOL INDENT		{ printf("%%%%%s\n",last); }
+sentence	<-	EOL	_ EOL INDENT	{ printf("\n"); ret_mode = 1; }
+			/ EOL INDENT	{ if(last_indent == NULL) {printf("\n"); ret_mode = 1;} else {ret_mode = 0;} }
+			/ "//" last:TILLEOL EOL INDENT		{ printf("%%%%%s\n",last); }
+			/ "/*" last:TILLENDCMT "*/"
 			/ {array_free(&last_list1);} NAMES SPACE ARE "stanze"
 				{
 					for(int ct = 0; ct < last_list1.len; ct++)
 						p_room(last_list1.strings[ct],last_list1.arg1[ct],last_list1.arg2[ct],last_list1.arg3[ct]);
 				}
-				(SPACE PROPROOMS)? STOP
-			/ {array_free(&last_list1);} ARTDET name:WORD SPACE ISARE AT_POSITIONS STOP
+				(SPACE PROPALLS)? STOPRET?
+			/ {array_free(&last_list1);} ARTDET SETNAME SPACE ISARE AT_POSITIONS STOPRET?
 				{
 					for(int ct = 0; ct < last_list1.len; ct++) {
 						int dir = last_list1.arg1[ct];
 						char* locfrom = last_list1.strings[ct];
-						if(last_list1.arg2) p_fromtoandback(dir, locfrom, name);
-						else p_fromto(dir, locfrom, name);
+						if(last_list1.arg2) p_fromtoandback(dir, locfrom, last_name);
+						else p_fromto(dir, locfrom, last_name);
 					}
 				}
-			/ {array_free(&last_list1);} PREPDA name:WORD SPACE "si" SPACE "va" SPACE FROM_POSITIONS STOP
+			/ {array_free(&last_list1);} PREPDA SETNAME SPACE ("si" SPACE "va" / "vai") SPACE FROM_POSITIONS STOPRET?
 				{
 					for(int ct = 0; ct < last_list1.len; ct++) {
 						int dir = last_list1.arg1[ct];
 						char* locto = last_list1.strings[ct];
-						if(last_list1.arg2[ct]) p_fromtoandback(dir, name, locto);
-						else p_fromto(dir, name, locto);
+						if(last_list1.arg2[ct]) p_fromtoandback(dir, last_name, locto);
+						else p_fromto(dir, last_name, locto);
 					}
 				}
-			/ ( {array_free(&last_list1);} NAMES SPACE )? ARE (
-					"veicoli" { for(int ct = 0; ct < last_list1.len; ct++) p_container(last_list1.strings[ct],last_list1.arg1[ct],last_list1.arg2[ct],last_list1.arg3[ct],1);}
-						(SPACE PROPVEHICLES)?
-					/ "supporti" SPACE "mobili"	{ for(int ct = 0; ct < last_list1.len; ct++) p_supporter(last_list1.strings[ct],last_list1.arg1[ct],last_list1.arg2[ct],last_list1.arg3[ct],1);}
-						(SPACE PROPVEHICLES)?
-					/ "supporti" 	{ for(int ct = 0; ct < last_list1.len; ct++) p_supporter(last_list1.strings[ct],last_list1.arg1[ct],last_list1.arg2[ct],last_list1.arg3[ct],0);}
-						(SPACE PROPOBJECTS)?
-					/ "contenitori" 	{ for(int ct = 0; ct < last_list1.len; ct++) p_container(last_list1.strings[ct],last_list1.arg1[ct],last_list1.arg2[ct],last_list1.arg3[ct],0);}
-						(SPACE PROPCONTAINERS)?
-					/ "persone" 	{ for(int ct = 0; ct < last_list1.len; ct++) p_person(last_list1.strings[ct],last_list1.arg1[ct],last_list1.arg2[ct],last_list1.arg3[ct]);}
-						(SPACE PROPPERSONS)?
-					/ "oggetti" 	{ for(int ct = 0; ct < last_list1.len; ct++) p_object(last_list1.strings[ct],last_list1.arg1[ct],last_list1.arg2[ct],last_list1.arg3[ct]);}
-						(SPACE PROPOBJECTS)?
+			/ ( {array_free(&last_list1);} NAMES SPACE )? ARE ( (
+						"veicoli" { for(int ct = 0; ct < last_list1.len; ct++) p_container(last_list1.strings[ct],last_list1.arg1[ct],last_list1.arg2[ct],last_list1.arg3[ct],1);}
+						/ "supporti" SPACE "mobili"	{ for(int ct = 0; ct < last_list1.len; ct++) p_supporter(last_list1.strings[ct],last_list1.arg1[ct],last_list1.arg2[ct],last_list1.arg3[ct],1);}
+						/ "supporti" 	{ for(int ct = 0; ct < last_list1.len; ct++) p_supporter(last_list1.strings[ct],last_list1.arg1[ct],last_list1.arg2[ct],last_list1.arg3[ct],0);}
+						/ "contenitori" 	{ for(int ct = 0; ct < last_list1.len; ct++) p_container(last_list1.strings[ct],last_list1.arg1[ct],last_list1.arg2[ct],last_list1.arg3[ct],0);}
+						/ "persone" 	{ for(int ct = 0; ct < last_list1.len; ct++) p_person(last_list1.strings[ct],last_list1.arg1[ct],last_list1.arg2[ct],last_list1.arg3[ct]);}
+						/ "oggetti" 	{ for(int ct = 0; ct < last_list1.len; ct++) p_object(last_list1.strings[ct],last_list1.arg1[ct],last_list1.arg2[ct],last_list1.arg3[ct]);}
+					)	(SPACE PROPALLS)?
 					/ {for(int ct = 0; ct < last_list1.len; ct++) p_object(last_list1.strings[ct],last_list1.arg1[ct],last_list1.arg2[ct],last_list1.arg3[ct]);}
-						PROPOBJECTS
-					)
-					(
-						SPACE PREPIN loc:WORD	{ for(int ct = 0; ct < last_list1.len; ct++) p_is_in(last_list1.strings[ct],loc);}
-						/ SPACE PREPSU loc:WORD	{ for(int ct = 0; ct < last_list1.len; ct++) p_is_on(last_list1.strings[ct],loc);}
-					)? STOP
+						PROPALLS
+				)
+				(
+					SPACE PREPIN SETLOC	{ for(int ct = 0; ct < last_list1.len; ct++) p_is_rel(last_list1.strings[ct],"in",last_loc,ret_mode);}
+					/ SPACE PREPSU SETLOC	{ for(int ct = 0; ct < last_list1.len; ct++) p_is_rel(last_list1.strings[ct],"on",last_loc,ret_mode);}
+					/ WORNBY SETLOC		{ for(int ct = 0; ct < last_list1.len; ct++) p_is_rel(last_list1.strings[ct],"wornby",last_loc,ret_mode);}
+					/ HELDBY SETLOC		{ for(int ct = 0; ct < last_list1.len; ct++) p_is_rel(last_list1.strings[ct],"heldby",last_loc,ret_mode);}
+				)? STOPRET?
 			/ ( {array_free(&last_list1);} NAMES SPACE )? ARE (
-					PREPIN loc:WORD	{ for(int ct = 0; ct < last_list1.len; ct++) p_is_in(last_list1.strings[ct],loc);}
-					/ PREPSU loc:WORD	{ for(int ct = 0; ct < last_list1.len; ct++) p_is_on(last_list1.strings[ct],loc);}
-				) STOP
+					PREPIN SETLOC		{ for(int ct = 0; ct < last_list1.len; ct++) p_is_rel(last_list1.strings[ct],"in",last_loc,ret_mode);}
+					/ PREPSU SETLOC	{ for(int ct = 0; ct < last_list1.len; ct++) p_is_rel(last_list1.strings[ct],"on",last_loc,ret_mode);}
+					/ WORNBY SETLOC	{ for(int ct = 0; ct < last_list1.len; ct++) p_is_rel(last_list1.strings[ct],"wornby",last_loc,ret_mode);}
+					/ HELDBY SETLOC	{ for(int ct = 0; ct < last_list1.len; ct++) p_is_rel(last_list1.strings[ct],"heldby",last_loc,ret_mode);}
+				) STOPRET?
 			/ ARE (
-					PREPIN loc:WORD	{ for(int ct = 0; ct < last_list1.len; ct++) p_is_in(last_list1.strings[ct],loc);}
-					/ PREPSU loc:WORD	{ for(int ct = 0; ct < last_list1.len; ct++) p_is_on(last_list1.strings[ct],loc);}
-				) STOP
-			/ ACT_INSTEAD_OF verb:WORD SPACE "qualcosa" COLON
-				{ p_action("instead of",verb,"$",""); }
-			/ ACT_REFUSE verb:WORD SPACE "qualcosa" COLON
-				{ p_action("refuse",verb,"$",""); }
-			/ ACT_BEFORE verb:WORD SPACE "qualcosa" COLON
-				{ p_action("before",verb,"$",""); }
-			/ ACT_PREVENT verb:WORD SPACE "qualcosa" COLON
-				{ p_action("prevent",verb,"$",""); }
-			/ ACT_PERFORM verb:WORD SPACE "qualcosa" COLON
-				{ p_action("perform",verb,"$",""); }
-			/ ACT_AFTER verb:WORD SPACE "qualcosa" COLON
-				{ p_action("after",verb,"$",""); }
+					PREPIN SETLOC		{ for(int ct = 0; ct < last_list1.len; ct++) p_is_rel(last_list1.strings[ct],"in",last_loc,ret_mode);}
+					/ PREPSU SETLOC	{ for(int ct = 0; ct < last_list1.len; ct++) p_is_rel(last_list1.strings[ct],"on",last_loc,ret_mode);}
+					/ WORNBY SETLOC	{ for(int ct = 0; ct < last_list1.len; ct++) p_is_rel(last_list1.strings[ct],"wornby",last_loc,ret_mode);}
+					/ HELDBY SETLOC	{ for(int ct = 0; ct < last_list1.len; ct++) p_is_rel(last_list1.strings[ct],"heldby",last_loc,ret_mode);}
+				) STOPRET?
+			/ IF CONDITIONS THEN STATEMENT IF_ENDING? { printf("(endif)"); }
+			/ SELECT ORSTATEMENTS SELECTMETHOD
+			/ NOW cond:ISorISNOT bool:TRUEorFALSE "che" SPACE < (!"!" .)* > "!" _ { printf("(now)"); if((int)cond != (int)bool) printf("~"); printf("(%s)",$1); }
+			/ (act:ACT_INSTEAD_OF / act:ACT_REFUSE / act:ACT_BEFORE / act:ACT_PREVENT / act:ACT_PERFORM / act:ACT_AFTER (TOHAVE / TOBE) / act:TRY_TO) (
+				"fare" SPACE (ARTIND/ARTDET) SETNAME
+					{ printf("(%s %s)",act,last_name); }
+				/ verb:WORD (
+					SPACE AT? dir:DIR { set_extstring(&last_loc,'#',dirs[(int)dir]); p_action(act,verb,last_loc,"",NULL); }
+					/ SPACE (ARTIND/ARTDET)? ("qualcosa" {set_string(&last_name,"$");} / SETNAME ) SPACE (
+						PREPSU ARTIND? (("qualcosa"/"qualcos'altro") {set_string(&last_name2,"$");} / SETNAME2) { p_action(act,verb,last_name,last_name2,"su"); }
+						/ ("dentro" SPACE/PREPIN) (ARTIND/ARTDET)? (("qualcosa"/"qualcos'altro") {set_string(&last_name2,"$");} / SETNAME2) { p_action(act,verb,last_name,last_name2,"in"); }
+						/ PREPA (ARTIND/ARTDET)? (("qualcosa"/"qualcos'altro") {set_string(&last_name2,"$");} / SETNAME2) { p_action(act,verb,last_name,last_name2,"a"); }
+						/ "dietro" SPACE (ARTIND/ARTDET)? (("qualcosa"/"qualcos'altro") {set_string(&last_name2,"$");} / SETNAME2) { p_action(act,verb,last_name,last_name2,"dietro"); }
+						/ "sotto" SPACE (ARTIND/ARTDET)? (("qualcosa"/"qualcos'altro") {set_string(&last_name2,"$");} / SETNAME2) { p_action(act,verb,last_name,last_name2,"sotto"); }
+						)
+					/ SPACE (ARTIND/ARTDET)? ("qualcosa" {set_string(&last_name,"$");} / SETNAME ) SPACE prep:WORD SPACE
+						(ARTIND/ARTDET)? (("qualcosa"/"qualcos'altro") {set_string(&last_name2,"$");} / SETNAME2)
+						{ p_action(act,verb,last_name,last_name2,prep); }
+					/ SPACE (ARTIND/ARTDET)? ("qualcosa" {set_string(&last_name,"$");} / SETNAME ) { p_action(act,verb,last_name,"",NULL); }
+					/ { p_action(act,verb,"","",NULL); }
+				)
+			  ) COLON?
+			/ UNDERSTAND cmd:WORD SPACE "qualcosa" SPACE prep:WORD SPACE ("qualcosa"/"qualcos'altro") SPACE
+				"come" SPACE inf:WORD SPACE "con" SPACE "participio" SPACE "passato" SPACE pp:WORD STOPRET?
+					{ add_action(cmd,2,inf,pp,prep);}
+			/ UNDERSTAND cmd:WORD SPACE "qualcosa" SPACE prep:WORD SPACE "come" SPACE inf:WORD STOPRET?
+				{ add_action(cmd,2,inf,NULL,prep);}
+			/ UNDERSTAND cmd:WORD SPACE "qualcosa" SPACE "come" SPACE inf:WORD SPACE "con" SPACE "participio" SPACE "passato" SPACE pp:WORD STOPRET?
+				{ add_action(cmd,1,inf,pp,NULL);}
+			/ UNDERSTAND cmd:WORD SPACE "qualcosa" SPACE "come" SPACE inf:WORD STOPRET?
+				{ add_action(cmd,1,inf,NULL,NULL);}
+			/ UNDERSTAND cmd:WORD SPACE "come" SPACE inf:WORD SPACE "con" SPACE "participio" SPACE "passato" SPACE pp:WORD STOPRET?
+				{ add_action(cmd,0,inf,pp,NULL);}
+			/ UNDERSTAND cmd:WORD SPACE "come" SPACE inf:WORD STOPRET?
+				{ add_action(cmd,0,inf,NULL,NULL);}
 			/ ARTDET (
-					"descrizione" SPACE PREPDI name:WORD { set_string(&last_name,name); }
+					"descrizione" SPACE PREPDI SETNAME 
 					/ ("sua" SPACE)? "descrizione"
 				)
-				SPACE IS str:QUOTED STOP?
+				SPACE IS COLON? str:QUOTED
 				{
-					if(array_contains(&rooms,last_name))	p_prop_val("look",last_name,(char*)str);
-					else p_prop_val("descr",last_name,(char*)str);
+					if(array_contains(&rooms,last_name))	p_prop_val("look",last_name,(char*)str,0);
+					else p_prop_val("descr",last_name,(char*)str,0);
 				}
+				STOPRET?
 			/ ARTDET (
-					"aspetto" SPACE PREPDI name:WORD { set_string(&last_name,name); }
+					"aspetto" SPACE PREPDI SETNAME
 					/ ("suo" SPACE)? "aspetto"
 				)
-				SPACE IS str:QUOTED STOP? { p_prop_val("appearance",last_name,str); }
-			/ ARTDET "giocat" ( "ore" / "rice" ) SPACE IS name:WORD STOP
-				{ set_string(&last_name,name); p_player(last_name);}
+				SPACE IS COLON? str:QUOTED { p_prop_val("appearance",last_name,str,0); } STOPRET? 
+			/ ARTDET (
+					"sinonim" [oi] SPACE PREPDI SETNAME
+					/ ("suo"/"suoi" SPACE)? "sinonim" [oi]
+				)
+				SPACE ISARE COLON? str:QUOTED { p_prop_val("dict",last_name,str,0); } STOPRET? 
+			/ ARTDET "giocat" ( "ore" / "rice" ) SPACE IS SETNAME
+				{ p_prop("current player",last_name,1);}
+				STOPRET?
 			/ (
-				AT dir:DIR PREPDI locfrom:WORD SPACE THEREIS ARTDET locto:WORD
-				/ PREPDA locfrom:WORD SPACE "si" SPACE ("va" / "sale" / "scende" / "entra" / "esce") SPACE
+				AT dir:DIR SPACE PREPDI SETLOCFROM SPACE THEREIS ARTDET SETLOCTO
+				/ PREPDA SETLOCFROM SPACE "si" SPACE ("va" / "sale" / "scende" / "entra" / "esce") SPACE
 					(
-						AT? dir:DIR
+						AT? dir:DIR SPACE
 						/ "in" SPACE dir:LOHI
 						/ dir:UPDOWN
 						/ dir:INOUT
 					)
-					( ("verso" SPACE)? ARTDET / PREPA / PREPDA) locto:WORD
-				/ ARTDET? locto:WORD SPACE ISARE AT dir:DIR PREPDI locfrom:WORD
-				) (vice:NOTVICE / vice:VICE) STOP {
-					if(vice) p_fromtoandback((int)dir, locfrom, locto);
-					else p_fromto((int)dir, locfrom, locto);
+					( ("verso" SPACE)? ARTDET / PREPA / PREPDA) SETLOCTO
+				/ ARTDET? SETLOCTO SPACE ISARE AT dir:DIR SPACE PREPDI SETLOCFROM
+				) (vice:NOTVICE / vice:VICE) {
+					if(vice) p_fromtoandback((int)dir, last_locfrom, last_locto);
+					else p_fromto((int)dir, last_locfrom, last_locto);
 				}
-			/ ( ARTDET name:WORD { set_string(&last_name,name); } SPACE )? IS
+				STOPRET? 
+			/ {array_free(&last_list1);} ARTDET? SETLOC SPACE (
+					("contiene"/"contengono") SPACE NAMES	{ for(int ct = 0; ct < last_list1.len; ct++) p_is_rel(last_list1.strings[ct],"in",last_loc,ret_mode);}
+					/ ("sostiene"/"sostengono") SPACE NAMES	{ for(int ct = 0; ct < last_list1.len; ct++) p_is_rel(last_list1.strings[ct],"on",last_loc,ret_mode);}
+					/ ("indossa"/"indossano") SPACE NAMES	{ for(int ct = 0; ct < last_list1.len; ct++) p_is_rel(last_list1.strings[ct],"wornby",last_loc,ret_mode);}
+					/ ("regge"/"reggono") SPACE NAMES		{ for(int ct = 0; ct < last_list1.len; ct++) p_is_rel(last_list1.strings[ct],"heldby",last_loc,ret_mode);}
+				) STOPRET?
+			/ ARTDET? SETLOC SPACE (
+					("contiene"/"contengono") SPACE ARTDET? SETNAME	{ p_is_rel(last_name, "in", last_loc,ret_mode); }
+					/ ("sostiene"/"sostengono") SPACE ARTDET? SETNAME	{ p_is_rel(last_name, "on", last_loc,ret_mode); }
+					/ ("indossa"/"indossano") SPACE ARTDET? SETNAME	{ p_is_rel(last_name, "wornby", last_loc,ret_mode); }
+					/ ("regge"/"reggono") SPACE ARTDET? SETNAME		{ p_is_rel(last_name, "heldby", last_loc,ret_mode); }
+				) STOPRET?
+			/ ( ARTDET? DEFNAME SPACE? )? ISARE
 				(
+					DESCRIPT
+					/ (
+					(ARTIND "stanza" SPACE { p_room(last_name,last_genre,last_plural,last_proper); } (PROPALL)? )?
 					(
-					(ARTIND "stanza" SPACE { p_room(last_name,last_genre,last_plural,last_proper); } PROPROOM? )?
-					(
-						AT dir:DIR 
+						AT dir:DIR SPACE 
 						/ dir:UPDOWN
 						/ dir:INOUT
 					)
 					( PREPDI / ARTDET / PREPDA)
-					locto:WORD (vice:NOTVICE / vice:VICE) {
-						if(vice) p_fromtoandback((int)dir, locto, last_name);
-						else p_fromto((int)dir, locto, last_name);
+					SETLOCTO (vice:NOTVICE / vice:VICE) {
+						if(vice) p_fromtoandback((int)dir, last_locto, last_name);
+						else p_fromto((int)dir, last_locto, last_name);
 					}
-					/ ARTIND? (
-						"stanza" 		{ p_room(last_name,last_genre,last_plural,last_proper); }
-							(SPACE PROPROOM)?
-						/ "veicolo"		{ p_container(last_name,last_genre,last_plural,last_proper, 1); }
-							(SPACE PROPVEHICLE)?
-						/ "supporto" SPACE "mobile"	{ p_supporter(last_name,last_genre,last_plural,last_proper, 1); }
-							(SPACE PROPVEHICLE)?
-						/ "supporto" 	{ p_supporter(last_name,last_genre,last_plural,last_proper, 0); }
-							(SPACE PROPOBJECT)?
-						/ "contenitore" 	{ p_container(last_name,last_genre,last_plural,last_proper, 0); }
-							(SPACE PROPCONTAINER)?
-						/ "persona" 	{ p_person(last_name,last_genre,last_plural,last_proper); }
-							(SPACE PROPPERSON)?
-						/ "oggetto" 	{ p_object(last_name,last_genre,last_plural,last_proper); }
-							(SPACE PROPOBJECT)?
-						/ { p_object(last_name,last_genre,last_plural,last_proper); } PROPOBJECT
+					/ ARTIND? ( (
+							"stanza"	{ p_room(last_name,last_genre,last_plural,last_proper); }
+							/ "veicolo"	{ p_container(last_name,last_genre,last_plural,last_proper, 1); }
+							/ "supporto" SPACE "mobile"	{ p_supporter(last_name,last_genre,last_plural,last_proper, 1); }
+							/ "supporto" 	{ p_supporter(last_name,last_genre,last_plural,last_proper, 0); }
+							/ "contenitore" 	{ p_container(last_name,last_genre,last_plural,last_proper, 0); }
+							/ "persona" 	{ p_person(last_name,last_genre,last_plural,last_proper); }
+							/ "oggetto" 	{ p_object(last_name,last_genre,last_plural,last_proper); }
+						)	(SPACE PROPALL)?
 					) (SPACE
 						(
-							PREPIN loc:WORD	{ p_is_in(last_name, loc); }
-							/ PREPSU loc:WORD	{ p_is_on(last_name, loc); }
+							PREPIN SETLOC		{ p_is_rel(last_name, "in", last_loc,ret_mode); }
+							/ PREPSU SETLOC	{ p_is_rel(last_name, "on", last_loc,ret_mode); }
+							/ WORNBY SETLOC	{ p_is_rel(last_name, "wornby", last_loc,ret_mode); }
+							/ HELDBY SETLOC	{ p_is_rel(last_name, "heldby", last_loc,ret_mode); }
 						)
 					)?
-					/ PREPIN loc:WORD	{ p_is_in(last_name, loc); }
-					/ PREPSU loc:WORD	{ p_is_on(last_name, loc); }
-					) (SPACE DESC_BY)?
-				) STOP
-			/ (ARTDET? (name:WORD {set_string(&last_name,name);} SPACE)? ISARE)? "apert" [oaie] SPACE "o" SPACE "chius" [oaie] QMARK
-				{ printf("(open or closed #%s)",last_name); }
-			/ (ARTDET? (name:WORD {set_string(&last_name,name);} SPACE)? ISARE)? "acces" [oaie] SPACE "o" SPACE "spent" [oaie] QMARK
-				{ printf("{(#%s is open) acces(oaie #%s) (or) spent(oaie #%s)}",last_name,last_name,last_name); }
-			/ ARTDET (
-					STORY "si" SPACE "intitola" SPACE
-					/ ("suo" SPACE)? "titolo" SPACE (PREPDI STORY)? IS
-				) str:QUOTED STOP	{ p_cmd_val("story title",str); }
-			/ ARTDET ("suo" SPACE)? "trafiletto" SPACE (PREPDI STORY)? IS str:QUOTED STOP
-				{ p_cmd_val("story blurb",str); }
-			/ ARTDET ("suo" SPACE)? "sottotitolo" SPACE (PREPDI STORY)? IS str:QUOTED STOP
-				{ p_cmd_val("story noun",str); }
-			/ ARTDET ("suo" SPACE)? "autore" SPACE (PREPDI STORY)? IS ( str:QUOTED / str:LASTTXT) STOP
-				{ p_cmd_val("story author",str); }
-			/ ARTDET ("suo" SPACE)? ("ifid"/"IFID") SPACE (PREPDI STORY)? IS ( str:QUOTED / str:LASTTXT) STOP
-				{ p_cmd_val("story ifid",str); }
-			/ ARTDET ("sua" SPACE)? "release" SPACE (PREPDI STORY)? IS ( str:QUOTED / str:LASTTXT) STOP
+					/ PREPIN SETLOC	{ p_is_rel(last_name, "in", last_loc,ret_mode); }
+					/ PREPSU SETLOC	{ p_is_rel(last_name, "on", last_loc,ret_mode); }
+					/ WORNBY SETLOC	{ p_is_rel(last_name, "wornby", last_loc,ret_mode); }
+					/ HELDBY SETLOC	{ p_is_rel(last_name, "heldby", last_loc,ret_mode); }
+					)
+				) (SPACE DESCRIPT)? STOPRET?
+			/ ([Ii] "ncrementa" / [Aa] "umenta") SPACE ARTDET "punteggio" SPACE PREPDI SETVARNUM2
+				{ printf("(increase score by %s)",last_name2); }
+			/ ([Ii] "ncrementa" / [Aa] "umenta") SPACE ARTDET "punteggio"
+				{ printf("(increase score by 1)"); }
+			/ [Dd] ("ecrementa" / "iminuisci") SPACE ARTDET "punteggio" SPACE PREPDI SETVARNUM2
+				{ printf("(decrease score by %s)",last_name2); }
+			/ [Dd] "ecrementa" SPACE ARTDET "punteggio"
+				{ printf("(decrease score by 1)"); }
+			/ [cC] "olleziona" SPACE ARTDET? SETNAME2 SPACE "tale" SPACE "che" SPACE
+				{ printf("(collect %s)*",last_name2); } CONDITIONS SPACE PREPIN SETNAME3 { printf("(into %s)",last_name3); }
+			/ [cC] "oncatena" SPACE SETNAME2 SPACE AND SETNAME3 SPACE PREPIN SETNAME
+				{ printf("(append %s %s %s)",last_name2,last_name3,last_name); }
+			/ [cC] "oncatena" SPACE { printf("(append "); } FULLLIST SPACE AND SETNAME3 SPACE PREPIN SETNAME
+				{ printf(" %s %s)",last_name3,last_name); }
+			/ [cC] "oncatena" SPACE SETNAME2 SPACE AND { printf("(append %s ",last_name2); } FULLLIST SPACE PREPIN SETNAME
+				{ printf(" %s)",last_name); }
+			/ [cC] "oncatena" SPACE { printf("(append "); } FULLLIST SPACE AND { printf(" "); } FULLLIST SPACE PREPIN SETNAME
+				{ printf(" %s)",last_name); }
+			/ (	SETNAME SPACE IS ARTDET ("somma"/"risultato") SPACE PREPDI SETVARNUM2 SPACE (AND / "più" SPACE) SETVARNUM3
+				/ SETNAME _ EQUAL (("somma"/"risultato") SPACE PREPDI SETVARNUM2 SPACE (AND / "più" SPACE) SETVARNUM3 / SETVARNUM2 _ "+" _ SETVARNUM3)
+			  )	{ printf("(%s plus %s into %s)",last_name2,last_name3,last_name); }
+			/ (	SETNAME SPACE IS ARTDET ("differenza"/"sottrazione"/"risultato") SPACE PREPDI SETVARNUM2 SPACE (AND / "meno" SPACE) SETVARNUM3
+				/ SETNAME _ EQUAL (("differenza"/"sottrazione"/"risultato") SPACE PREPDI SETVARNUM2 SPACE (AND / "meno" SPACE) SETVARNUM3 / SETVARNUM2 _ "-" _ SETVARNUM3)
+			  )	{ printf("(%s minus %s into %s)",last_name2,last_name3,last_name); }
+			/ (	SETNAME SPACE IS ARTDET ("prodotto"/"moltiplicazione"/"risultato") SPACE PREPDI SETVARNUM2 SPACE (AND / "per" SPACE) SETVARNUM3
+				/ SETNAME _ EQUAL (("prodotto"/"moltiplicazione"/"risultato") SPACE PREPDI SETVARNUM2 SPACE (AND / "per" SPACE) SETVARNUM3 / SETVARNUM2 _ "*" _ SETVARNUM3)
+			  )	{ printf("(%s times %s into %s)",last_name2,last_name3,last_name); }
+			/ (	SETNAME SPACE IS ARTDET ("divisione"/"quoziente"/"risultato") SPACE PREPDI SETVARNUM2 SPACE (AND / "diviso" SPACE) SETVARNUM3
+				/ SETNAME _ EQUAL (("divisione"/"quoziente"/"risultato") SPACE PREPDI SETVARNUM2 SPACE (AND / "diviso" SPACE) SETVARNUM3 / SETVARNUM2 _ "/" _ SETVARNUM3)
+			  )	{ printf("(%s divided by %s into %s)",last_name2,last_name3,last_name); }
+			/ (	SETNAME SPACE IS ARTDET ("modulo"/"risultato") SPACE PREPDI SETVARNUM2 SPACE (AND / "modulo" SPACE) SETVARNUM3
+				/ SETNAME _ EQUAL (("modulo"/"risultato") SPACE PREPDI SETVARNUM2 SPACE (AND / "modulo" SPACE) SETVARNUM3 / SETVARNUM2 _ "%" _ SETVARNUM3)
+			  )	{ printf("(%s modulo %s into %s)",last_name2,last_name3,last_name); }
+			/ (	SETNAME SPACE IS ARTIND "numero" SPACE "casuale" SPACE "tra" SPACE SETVARNUM2 SPACE AND SETVARNUM3
+				/ SETNAME _ EQUAL (ARTIND)? "numero" SPACE "casuale" SPACE "tra" SPACE SETVARNUM2 SPACE AND SETVARNUM3
+			  )	{ printf("(raddom from %s to %s into %s)",last_name2,last_name3,last_name); }
+			/ "fallisci" 		{ printf("(fail)"); }
+			/ "maiuscolo" 	{ printf("(uppercase)"); }
+			/ "quit" 		{ printf("(quit)"); }
+			/ "ricomincia" 	{ printf("(restart)"); }
+			/ "salva" SPACE SETNAME	{ printf("(save %s)",last_name); }
+			/ "carica" 		{ printf("(restore)"); }
+			/ "undo" 		{ printf("(undo)"); }
+			/ "game" SPACE "over" 		{ printf("(game over)"); }
+			/ [Ii] "ntroduzione" COLON? { printf("(intro)"); }
+			/ [Ii] "ntestazione" STOPRET? { printf("(banner)"); }
+			/ [Ee] "ntra" SPACE PREPIN SETNAME STOPRET?	{ printf("(enter %s)",last_name); }
+			/ ARTDET? [Pp] "unteggio" SPACE IS? "abilitato"	{ printf("(scoring enabled)"); }
+			/ ARTDET? [Pp] "unteggio" SPACE IS? "disabilitato"	{ printf("~(scoring enabled)"); }
+			/ ARTDET? ([Mm] "assimo" SPACE)? [Pp] "unteggio" SPACE ([Mm] "assimo" SPACE)? IS? COLON? num:NUMBER
+				{ printf("(maximum score %s)",num); }
+			/ CONDITIONS
+			/ (ARTDET? (SETNAME SPACE)? ISARE)? "apert" [oaie] SPACE "o" SPACE "chius" [oaie] QMARK
+				{ printf("(open or closed %s)",last_name); }
+			/ (ARTDET? (SETNAME SPACE)? ISARE)? "acces" [oaie] SPACE "o" SPACE "spent" [oaie] QMARK
+				{ printf("{(%s is on) acces(oaie %s) (or) spent(oaie %s)}",last_name,last_name,last_name); }
+			/ (	ARTDET STORY "si" SPACE "intitola" SPACE
+				/ ARTDET ("suo" SPACE)? "titolo" SPACE (PREPDI STORY)? IS
+				/ ARTDET? [Tt] "itolo"
+				) COLON? ( str:QUOTED / str:LASTTXT) { p_cmd_val("story title",str,0); }
+				STOPRET?
+			/ ( ARTDET ("suo" SPACE)? "trafiletto" SPACE (PREPDI STORY)? IS / ARTDET? [Tt] "rafiletto") COLON? ( str:QUOTED / str:LASTTXT)
+				{ p_cmd_val("story blurb",str,0); }
+				STOPRET?
+			/ ( ARTDET ("suo" SPACE)? "sottotitolo" SPACE (PREPDI STORY)? IS / ARTDET? [Ss] "ottotitolo") COLON? ( str:QUOTED / str:LASTTXT)
+				{ p_cmd_val("story noun",str,0); }
+				 STOPRET?
+			/ ( ARTDET ("suo" SPACE)? "autore" SPACE (PREPDI STORY)? IS / ARTDET? [Aa] "utore") COLON? ( str:QUOTED / str:LASTTXT)
+				{ p_cmd_val("story author",str,0); }
+				STOPRET?
+			/ ( ARTDET ("suo" SPACE)? ("ifid"/"IFID") SPACE (PREPDI STORY)? IS / ARTDET? [Ii] ("fid"/"FID")) COLON? ( str:QUOTED / str:LASTTXT)
+				{ p_cmd_val("story ifid",str,0); }
+				 STOPRET?
+			/ ( ARTDET ("sua" SPACE)? "release" SPACE (PREPDI STORY)? IS / ARTDET? [Rr] "elease") COLON?  ( str:QUOTED / str:LASTTXT)
 				{ printf("(story release %d)\n",atoi(str)); }
-			/ str:QUOTED ("." _)?	{ p_plaintext(str); }
-			/ last:TILLEND EOL	{ p_error("ERRORE DI SINTASSI",last); }
-
-DESC_BY	<-	"descritt" [oaie] SPACE ("come"/"da") SPACE str:QUOTED
-				{
-					if(array_contains(&rooms,last_name))	p_prop_val("look",last_name,(char*)str);
-					else p_prop_val("descr",last_name,(char*)str);
+				 STOPRET?
+			/ (
+				PREPDI SETNAME 	{ printf("(prep-di %s)",last_name); }
+				/ PREPA SETNAME 	{ printf("(prep-a %s)",last_name); }
+				/ PREPDA SETNAME	{ printf("(prep-da %s)",last_name); }
+				/ PREPIN SETNAME	{ printf("(prep-in %s)",last_name); }
+				/ PREPSU SETNAME	{ printf("(prep-su %s)",last_name); }
+				/ ARTIND SETNAME	{ printf("(a %s)",last_name); }
+				/ ARTDET SETNAME	{
+					if(last_proper == 1) printf("{(object %s)(name %s)(or)%s}",last_name,last_name,last_name);
+					else printf("(the %s)",last_name);
 				}
+			  ) ( SPACE adj:ADJECT { printf("%s(oaie %s)",adj,last_name); } )? _
+			/ str:QUOTED	{ p_plaintext(str); } SPACE sentence STOPRET?
+			/ str:QUOTED	{ p_plaintext(str); } "." {printf("\n");}
+			/ str:QUOTED 	{ p_plaintext(str); }
+			/ STOPRET
+			/ SEMICOLON
+			/ COLON
+			/ "."	{ printf("\n"); }
+			/ last:TILLEOL EOL	{ p_error("ERRORE DI SINTASSI",last); }
 
-TILLEND	<-	< ( !EOL . )* >	{ $$ = (char*)$1; }
+UNDERSTAND	<-	[Ii] ("ntendi"/"nterpreta") SPACE
 
-LASTTXT	<-	< [^\.]* >	{ $$ = (char*)$1; }
+WORNBY	<-	"indossat" [oaei] SPACE PREPDA
+HELDBY	<-	"rett" [oaei] SPACE PREPDA
+
+ADJECT	<-	< ("apert" / "chius" / "acces" / "spent") > [oaie]		{ $$ = (char*)$1; } 
+TOHAVE	<-	("avere"/"aver") SPACE
+TOBE	<-	("essere"/"essersi"/"esser") SPACE
+
+NOW		<-	([Oo] "ra" / [Aa] "desso") SPACE
+SELECT		<-	[sS] "eleziona" SPACE	{ printf("(select) "); }
+ORSTATEMENTS	<-	STATEMENTS ( OR { printf(" (or) "); } ORSTATEMENTS)?
+SELECTMETHOD	<-	( "a" SPACE "caso" / "casualmente" ) { printf(" (at random) ");}
+				/ "fermandoti" { printf(" (stopping) ");}
+				/ "ciclicamente" { printf(" (cycling) ");}
+				/ "rigorosamente" SPACE "a" SPACE "caso" { printf(" (purely at random) ");}
+				/ "poi" SPACE ( "a" SPACE "caso" / "casualmente" ) { printf(" (then at random) ");}
+				/ "poi" SPACE "rigorosamente" SPACE "a" SPACE "caso" { printf(" (then purely at random) ");}
+
+IF		<-	 ("Se"/"se") SPACE { printf("(if)"); }
+THEN	<-	"allora" SPACE { printf("(then)"); }
+ELSE		<-	"altrimenti" SPACE { printf("(else)"); }
+ELSEIF	<-	"altrimenti" SPACE "se" SPACE { printf("(elseif)"); }
+STATEMENTS	<-	STATEMENT (SEMICOLON STATEMENTS)?
+STATEMENT	<-	sentence
+IF_ENDING	<-	(ELSEIF CONDITIONS THEN / ELSE) STATEMENTS
+
+CONDITIONS	<-	{ ret_mode = 0; } CONDITION ( ( "se" SPACE / AND / SEMICOLON / OR { printf("(or)"); } ) CONDITIONS )?	{ ret_mode = 1; }
+CONDITION	<-	{array_free(&last_list1);} NAMES SPACE cond:AREorARENOT { if((int)cond == 0) printf("~{"); } (
+					"stanze" SPACE
+						{ for(int ct = 0; ct < last_list1.len; ct++) printf("(room %s)",last_list1.strings[ct]); if((int)cond == 0) printf(" } "); }
+					/ "veicoli" SPACE
+						{ for(int ct = 0; ct < last_list1.len; ct++) printf("(vehicles %s)",last_list1.strings[ct]); if((int)cond == 0) printf(" } "); }
+					/ "supporti" SPACE
+						{ for(int ct = 0; ct < last_list1.len; ct++) printf("(supporter %s)",last_list1.strings[ct]); if((int)cond == 0) printf(" } "); }
+					/ "contenitori" SPACE
+						{ for(int ct = 0; ct < last_list1.len; ct++) printf("(containers %s)",last_list1.strings[ct]); if((int)cond == 0) printf(" } "); }
+					/ "persone" SPACE
+						{ for(int ct = 0; ct < last_list1.len; ct++) printf("(animate %s)",last_list1.strings[ct]); if((int)cond == 0) printf(" } "); }
+					/ PROPALLS { if((int)cond == 0) printf(" } "); }
+					/ PREPIN SETLOC
+						{ for(int ct = 0; ct < last_list1.len; ct++) printf("(%s is #in %s)",last_list1.strings[ct],last_loc); if((int)cond == 0) printf(" } "); }
+					/ PREPSU SETLOC
+						{ for(int ct = 0; ct < last_list1.len; ct++) printf("(%s is #on %s)",last_list1.strings[ct],last_loc); if((int)cond == 0) printf(" } "); }
+					/ WORNBY SETLOC
+						{ for(int ct = 0; ct < last_list1.len; ct++) printf("(%s is #wornby %s)",last_list1.strings[ct],last_loc); if((int)cond == 0) printf(" } "); }
+					/ HELDBY SETLOC
+						{ for(int ct = 0; ct < last_list1.len; ct++) printf("(%s is #heldby %s)",last_list1.strings[ct],last_loc); if((int)cond == 0) printf(" } "); }
+				)
+				/ cond:ISorISNOT bool:TRUEorFALSE "che" SPACE < (!"?" .)* > "?" _ { if((int)cond != (int)bool) printf("~"); printf("(%s)",$1); }
+				/ ARTDET? "verbo" SPACE PREPDI SETNAME SPACE cond:ISorISNOT verb:WORD
+					{ printf("{(%s = [$Verb|$])",last_name); if((int)cond == 0) printf("~"); printf("($Verb = @%s)}",verb_en(verb)); }
+				/ ARTDET? SETNAME SPACE cond:ISorISNOT ARTIND "comando"
+					{ if((int)cond == 0) printf("~"); printf("(command %s)",last_name); }
+				/ ARTDET ("attuale" SPACE)? "stanza" SPACE (("attuale"/"corrente") SPACE)? cond:ISAREorISARENOT ARTDET? SETNAME
+					{ if((int)cond == 0) printf("~"); p_prop("current room",last_name,0); }
+				/ ARTDET "giocat" ( "ore" / "rice" ) SPACE cond:YESorNOT "può" SPACE "vedere"
+					{ if((int)cond == 0) printf("~"); printf("(player can see)"); }
+				/ ARTDET "giocat" ( "ore" / "rice" ) SPACE cond:ISAREorISARENOT ARTDET? SETNAME
+					{ if((int)cond == 0) printf("~"); p_prop("current player",last_name,0); }
+				/ (
+					AT dir:DIR SPACE PREPDI SETLOCFROM SPACE cond:THEREISorISNOT ARTDET SETLOCTO
+					/ PREPDA SETLOCFROM SPACE cond:YESorNOT "si" SPACE ("va" / "sale" / "scende" / "entra" / "esce") SPACE
+						( AT? dir:DIR SPACE / "in" SPACE dir:LOHI / dir:UPDOWN / dir:INOUT )
+						( ("verso" SPACE)? ARTDET / PREPA / PREPDA) SETLOCTO
+					/ ARTDET? SETLOCTO SPACE cond:ISAREorISARENOT AT dir:DIR SPACE PREPDI SETLOCFROM
+				) {
+					if((int)cond == 0) printf("~");
+					printf("(from %s go #%s to %s)", last_locfrom, dirs[(int)dir], last_locto);
+				}
+				/ {array_free(&last_list1);} ARTDET? SETLOC SPACE cond:YESorNOT (
+					("contiene"/"contengono") SPACE NAMES	{ for(int ct = 0; ct < last_list1.len; ct++) {if((int)cond == 0) printf("~"); p_is_rel(last_list1.strings[ct],"in",last_loc,ret_mode);} }
+					/ ("sostiene"/"sostengono") SPACE NAMES	{ for(int ct = 0; ct < last_list1.len; ct++) {if((int)cond == 0) printf("~"); p_is_rel(last_list1.strings[ct],"on",last_loc,ret_mode);} }
+					/ ("indossa"/"indossano") SPACE NAMES	{ for(int ct = 0; ct < last_list1.len; ct++) {if((int)cond == 0) printf("~"); p_is_rel(last_list1.strings[ct],"wornby",last_loc,ret_mode);} }
+					/ ("regge"/"reggono") SPACE NAMES	{ for(int ct = 0; ct < last_list1.len; ct++) {if((int)cond == 0) printf("~"); p_is_rel(last_list1.strings[ct],"heldby",last_loc,ret_mode);} }
+					) SPACE?
+				/ ARTDET? SETLOC SPACE cond:YESorNOT {if((int)cond == 0) printf("~");} (
+					("contiene"/"contengono") SPACE ARTDET? SETNAME	{ p_is_rel(last_name, "in", last_loc,ret_mode); }
+					/ ("sostiene"/"sostengono") SPACE ARTDET? SETNAME	{ p_is_rel(last_name, "on", last_loc,ret_mode); }
+					/ ("indossa"/"indossano") SPACE ARTDET? SETNAME	{ p_is_rel(last_name, "wornby", last_loc,ret_mode); }
+					/ ("regge"/"reggono") SPACE ARTDET? SETNAME		{ p_is_rel(last_name, "heldby", last_loc,ret_mode); }
+					) SPACE?
+				/ (ARTDET? SETNAME SPACE)? cond:ISorISNOT { if((int)cond == 0) printf("~"); } (
+					(
+						( AT dir:DIR SPACE / dir:UPDOWN / dir:INOUT )
+						( PREPDI / ARTDET / PREPDA) SETLOCTO
+						{ printf("(from %s go #%s to %s)", last_name, dirs[(int)dir], last_locto); }
+					)
+					/ PREPIN SETLOC SPACE?
+						{ printf("(%s is #in %s)",last_name,last_loc); }
+					/ PREPSU SETLOC 
+						{ printf("(%s is #on %s)",last_name,last_loc); }
+					/ WORNBY SETLOC 
+						{ printf("(%s is #wornby %s)",last_name,last_loc); }
+					/ HELDBY SETLOC 
+						{ printf("(%s is #heldby %s)",last_name,last_loc); }
+					/ ARTIND? (
+						"stanza"	{ printf("(room %s)",last_name); }
+						/ "veicolo"	{ printf("(vehicle %s)",last_name); }
+						/ "supporto"	{ printf("(supporter %s)",last_name); }
+						/ "contenitore"	{ printf("(container %s)",last_name); }
+						/ "persona"	{ printf("(person %s)",last_name); }
+						/ PROPALL
+					) SPACE?
+				)
+				/ ARTDET? SETNAME SPACE IS ARTIND ("elemento" SPACE)? PREPDI SETNAME2 { printf("(%s is one of %s)",last_name,last_name2); }
+				/ ARTDET? SETNAME SPACE IS ARTIND ("elemento" SPACE)? PREPDI { printf("(%s is one of ",last_name); } FULLLIST { printf(")"); }
+				/ num:NUMBER SPACE IS ARTIND ("elemento" SPACE)? PREPDI SETNAME2 { printf("(%s is one of %s)",num,last_name2); }
+				/ num:NUMBER SPACE IS ARTIND ("elemento" SPACE)? PREPDI { printf("(%s is one of ",num); } FULLLIST { printf(")"); }
+				/ str:QUOTED IS ARTIND ("elemento" SPACE)? PREPDI SETNAME2 { printf("(@%s is one of %s",str,last_name2); }
+				/ str:QUOTED IS ARTIND ("elemento" SPACE)? PREPDI { printf("(@%s is one of ",str); } FULLLIST { printf(")"); }
+				/ {printf("(");} FULLLIST _ IS ARTIND ("elemento" SPACE)? PREPDI SETNAME2 { printf(" is one of %s)",last_name2); }
+				/ {printf("(");} FULLLIST _ IS ARTIND ("elemento" SPACE)? PREPDI { printf(" is one of "); } FULLLIST { printf(")"); }
+				/ ARTDET? SETVARNUM2 (sym:EQUAL / sym:LESS / sym:GREATER) SETVARNUM3 { printf("(%s %s %s)",last_name2,sym,last_name3); } STOPRET?
+				/ ARTDET? SETNAME EQUAL { printf("(%s = ",last_name); } list:FULLLIST { printf(")"); } STOPRET?
+				/ { printf("("); } list:FULLLIST EQUAL SETNAME	{ printf(" = %s)",last_name); } STOPRET?
+				/ ARTDET? SETNAME EQUAL { printf("(%s = ",last_name); } list:PARTLIST { printf(")"); } STOPRET?
+				/ { printf("("); } list:PARTLIST EQUAL SETNAME	{ printf(" = %s)",last_name); } STOPRET?
+				/ ARTDET? SETNAME SPACE cond:ISorISNOT { if((int)cond == 0) printf(" ~"); } ARTIND? (
+						"numero" { printf("(number %s)",last_name); }
+						/ "parola" SPACE "sconosciuta"  { printf("(unknown word %s)",last_name); }
+						/ "parola" { printf("(word %s)",last_name); }
+						/ "lista" SPACE "non" SPACE "vuota" { printf("(nonempty %s)",last_name); }
+						/ "lista" SPACE "vuota" { printf("(empty %s)",last_name); }
+						/ "lista" { printf("(list %s)",last_name); }
+						/ "unificat" [oa] SPACE "totalmente" { printf("(fully bound %s)",last_name); }
+						/ "unificat" [oa] { printf("(bound %s)",last_name); }
+						/ "oggetto" { printf("(object %s)",last_name); }
+						/ "vuot" [oa] { printf("(empty %s)",last_name); }
+					) SPACE
+
+TILLEOL	<-	< ( !EOL . )* >	{ $$ = (char*)$1; }
+TILLENDCMT	<-	< ( !"*/" . )* >	{ $$ = (char*)$1; }
+
+LASTTXT	<-	< [^/\.\r\n]* >	{ $$ = (char*)$1; }
 STORY	<-	("storia" / "avventura") SPACE
 
 LOHI		<-	("alto" {$$ = (char*)D_SU;} / "basso" {$$ = (char*)D_GIU;}) SPACE
@@ -421,162 +856,176 @@ UPDOWN	<-	("sopra" {$$ = (char*)D_GIU;} / "sotto" {$$ = (char*)D_SU;}) SPACE
 NOTVICE	<-	SPACE ("ma" SPACE "non" SPACE "viceversa" / "senza" SPACE "ritorno") { $$ = (char*)0; }
 VICE		<-	(SPACE ("e" SPACE "viceversa" / "con" SPACE "ritorno"))? { $$ = (char*)1; }
 
-DIR	<-	(	"nordest"		{ $$ = (char*)D_NORDEST; }
-			/ "nordovest"	{ $$ = (char*)D_NORDOVEST; }
-			/ "nord" 		{ $$ = (char*)D_NORD; }
-			/ "giù"		{ $$ = (char*)D_GIU; }
-			/ "dentro"		{ $$ = (char*)D_DENTRO; }
-			/ "fuori"		{ $$ = (char*)D_FUORI; }
-			/ "sudest"		{ $$ = (char*)D_SUDEST; }
-			/ "sudovest"	{ $$ = (char*)D_SUDOVEST; }
-			/ "sud" 		{ $$ = (char*)D_SUD; }
-			/ "su"		{ $$ = (char*)D_SU; }
-			/ "est"		{ $$ = (char*)D_EST; }
-			/ "ovest"		{ $$ = (char*)D_OVEST; }
-		) SPACE
+DIR	<-	"nordest"		{ $$ = (char*)D_NORDEST; }
+		/ "nordovest"	{ $$ = (char*)D_NORDOVEST; }
+		/ "nord" 		{ $$ = (char*)D_NORD; }
+		/ "giù"		{ $$ = (char*)D_GIU; }
+		/ "dentro"		{ $$ = (char*)D_DENTRO; }
+		/ "fuori"		{ $$ = (char*)D_FUORI; }
+		/ "sudest"		{ $$ = (char*)D_SUDEST; }
+		/ "sudovest"	{ $$ = (char*)D_SUDOVEST; }
+		/ "sud" 		{ $$ = (char*)D_SUD; }
+		/ "su"		{ $$ = (char*)D_SU; }
+		/ "est"		{ $$ = (char*)D_EST; }
+		/ "ovest"		{ $$ = (char*)D_OVEST; }
 
-ADJMALE		<-	"maschile"
-ADJFEMALE	<-	"femminile"	{ p_prop("female",last_name); }
-ADJPLURAL	<-	"plurale"		{ p_prop("plural",last_name); }
-ADJPROPER	<-	"proprio"		{ p_prop("proper",last_name); }
+DESCBY	<-	("che" SPACE ISARE)? "descritt" [oaie] SPACE ("come"/"da") SPACE str:QUOTED
+				{
+					if(array_contains(&rooms,last_name))	p_prop_val("look",last_name,(char*)str,0);
+					else p_prop_val("descr",last_name,(char*)str,0);
+				}
+SYNON	<-	"con" SPACE "sinonim" [oi] SPACE str:QUOTED {p_prop_val("dict",last_name,str,1);}
+
+DESCRIPT	<-	DESCBASE (OPTSEP DESCRIPT)?
+DESCBASE	<-	DESCBY / SYNON
+
+ADJMALE		<-	"maschile" / "maschio"
+ADJFEMALE	<-	"femminile" / "femmina"	{ p_prop("female",last_name,ret_mode); }
+ADJPLURAL	<-	"plurale"		{ p_prop("plural",last_name,ret_mode); }
+ADJPROPER	<-	"proprio"		{ p_prop("proper",last_name,ret_mode); }
 ADJGENRE		<-	ADJMALE / ADJFEMALE
 ADJBASE		<-	ADJGENRE / ADJPLURAL / ADJPROPER
 
-ADJMALES		<-	"maschili"
-ADJFEMALES	<-	"femminili"	{for(int ct = 0; ct < last_list1.len; ct++) p_prop("female",last_list1.strings[ct]);}
-ADJPLURALS	<-	"plurali"		{for(int ct = 0; ct < last_list1.len; ct++) p_prop("plural",last_list1.strings[ct]);}
-ADJPROPERS	<-	"propri"		{for(int ct = 0; ct < last_list1.len; ct++) p_prop("proper",last_list1.strings[ct]);}
+ADJMALES		<-	"maschili" / "maschi"
+ADJFEMALES	<-	"femminili" / "femmine"	{for(int ct = 0; ct < last_list1.len; ct++) p_prop("female",last_list1.strings[ct],ret_mode);}
+ADJPLURALS	<-	"plurali"		{for(int ct = 0; ct < last_list1.len; ct++) p_prop("plural",last_list1.strings[ct],ret_mode);}
+ADJPROPERS	<-	"propri"		{for(int ct = 0; ct < last_list1.len; ct++) p_prop("proper",last_list1.strings[ct],ret_mode);}
 ADJGENRES	<-	ADJMALES / ADJFEMALES
 ADJBASES		<-	ADJGENRES / ADJPLURALS / ADJPROPERS
 
-PROPROOM	<-	ADJROOM (OPTSEP PROPROOM )?
-ADJROOM		<-	"buia"	{ p_prop("inherently dark",last_name); }
-				/ ADJGENRE
+ADJROOM		<-	"bui" [oae]*	{ p_prop("inherently dark",last_name,ret_mode); }
 
-PROPROOMS	<-	ADJROOMS (OPTSEP PROPROOMS )?
-ADJROOMS	<-	"buie"	{for(int ct = 0; ct < last_list1.len; ct++) p_prop("inherently dark",last_list1.strings[ct]);}
-				/ ADJBASES
+ADJROOMS	<-	"bui" [e]*	{for(int ct = 0; ct < last_list1.len; ct++) p_prop("inherently dark",last_list1.strings[ct],ret_mode);}
 
-PROPOBJECT	<-	ADJOBJECT ( OPTSEP PROPOBJECT )?
-ADJOBJECT	<-	("commestibile"/CHE_SI_PUO "mangiare")	{ p_prop("edible",last_name); }
-				/ ("porta" [tb] "ile"/CHE_SI_PUO "portare")		{ p_prop("item",last_name); }
+ADJOBJECT	<-	("commestibile"/THATCAN "mangiare")	{ p_prop("edible",last_name,ret_mode); }
+				/ ("porta" [tb] "ile"/THATCAN "portare")		{ p_prop("item",last_name,ret_mode); }
 				/ "che" SPACE ("illumina"/"fornisce" SPACE "luce") SPACE "se" SPACE "acces" [oa]
-					{ _pindent("(#%s provides light) (#%s is on)\n(switchable #%s)\n",last_name,last_name,last_name); }
-				/ "che" SPACE ("illumina"/"fornisce" SPACE "luce")	{ _pindent("(#%s provides light)\n",last_name); }
-				/ ("attivabile"/"disattivabile"/CHE_SI_PUO ("accendere"/"spegnere")) 	{ p_prop("switchable",last_name); }
-				/ "acceso"	{ p_is_prop("on",last_name); }
-				/ "spento"	{ p_is_prop("off",last_name); }
+					{ _pindent("(%s provides light) (%s is on)\n",last_name,last_name); _pindent("(switchable %s)\n",last_name); }
+				/ "che" SPACE ("illumina"/"fornisce" SPACE "luce")	{ _pindent("(%s provides light)\n",last_name); }
+				/ ("attivabile"/"disattivabile"/THATCAN ("accendere"/"spegnere")) 	{ p_prop("switchable",last_name,ret_mode); }
+				/ "acceso"	{ p_is_prop("on",last_name,ret_mode); }
+				/ "spento"	{ p_is_prop("off",last_name,ret_mode); }
 				/ "dove" SPACE "ci" SPACE "si" SPACE "siede"
-					{ p_prop("on-seat",last_name); }
+					{ p_prop("on-seat",last_name,ret_mode); }
 				/ ("dove" / PREPSU SPACE ("cui"/"quale")) SPACE "ci" SPACE "si" SPACE ("siede" / "può" SPACE "sedere")
-					{ p_prop("on-seat",last_name); }
+					{ p_prop("on-seat",last_name,ret_mode); }
 				/ PREPIN SPACE ("cui"/"quale") SPACE "ci" SPACE "si" SPACE "può" SPACE ("siede" / "può" SPACE "sedere")
-					{ p_prop("in-seat",last_name); }
-				/ CHE_E_STATO? ("maneggiat"/"moss"/"spostat") [oa]	{ p_is_prop("handled",last_name); }
-				/ ("indossabile"/CHE_SI_PUO "indossare")	{ p_prop("wearable",last_name); }
-				/ ADJBASE
+					{ p_prop("in-seat",last_name,ret_mode); }
+				/ THATIS? ("maneggiat"/"moss"/"spostat") [oa]	{ p_is_prop("handled",last_name, ret_mode); }
+				/ ("indossabile"/THATCAN "indossare")	{ p_prop("wearable",last_name,ret_mode); }
 
-PROPOBJECTS	<-	ADJOBJECTS (OPTSEP PROPOBJECTS )?
-ADJOBJECTS	<-	("commestibili"/CHE_SI_PUO "mangiare")
-					{for(int ct = 0; ct < last_list1.len; ct++) p_prop("edible",last_list1.strings[ct]);}
-				/ ("portatili"/CHE_SI_PUO "portare")
-					{for(int ct = 0; ct < last_list1.len; ct++) p_prop("item",last_list1.strings[ct]);}
-				/ CHE_E_STATO? ("maneggiat"/"moss"/"spostat") [ie]
-					{for(int ct = 0; ct < last_list1.len; ct++) p_is_prop("handled",last_list1.strings[ct]);}
+ADJOBJECTS	<-	("commestibili"/THATCAN "mangiare")
+					{for(int ct = 0; ct < last_list1.len; ct++) p_prop("edible",last_list1.strings[ct],ret_mode);}
+				/ ("portatili"/THATCAN "portare")
+					{for(int ct = 0; ct < last_list1.len; ct++) p_prop("item",last_list1.strings[ct],ret_mode);}
+				/ THATIS? ("maneggiat"/"moss"/"spostat") [ie]
+					{for(int ct = 0; ct < last_list1.len; ct++) p_is_prop("handled",last_list1.strings[ct],ret_mode);}
 				/ "che" SPACE ("illuminano"/"forniscono" SPACE "luce") SPACE "se" SPACE "acces" [ie]
 					{
 						for(int ct = 0; ct < last_list1.len; ct++)
-							_pindent("(#%s provides light) (#%s is on)\n(switchable #%s)\n",
+							_pindent("(%s provides light) (%s is on)\n(switchable %s)\n",
 								last_list1.strings[ct],last_list1.strings[ct],last_list1.strings[ct]
 							);
 					}
 				/ "che" SPACE ("illuminano"/"forniscono" SPACE "luce")
 					{
 						for(int ct = 0; ct < last_list1.len; ct++)
-							_pindent("(#%s provides light)\n",last_list1.strings[ct]);
+							_pindent("(%s provides light)\n",last_list1.strings[ct]);
 					}
-				/ ("attivabili"/"disattivabili"/CHE_SI_PUO ("accendere"/"spegnere"))
+				/ ("attivabili"/"disattivabili"/THATCAN ("accendere"/"spegnere"))
 					{
 						for(int ct = 0; ct < last_list1.len; ct++)
-							p_prop("switchable",last_list1.strings[ct]);
+							p_prop("switchable",last_list1.strings[ct],ret_mode);
 					}
-				/ "acces" [ie]	{ for(int ct = 0; ct < last_list1.len; ct++)	p_is_prop("on",last_list1.strings[ct]); }
-				/ "spent" [ie]	{ for(int ct = 0; ct < last_list1.len; ct++)	p_is_prop("off",last_list1.strings[ct]); }
+				/ "acces" [ie]	{ for(int ct = 0; ct < last_list1.len; ct++)	p_is_prop("on",last_list1.strings[ct],ret_mode); }
+				/ "spent" [ie]	{ for(int ct = 0; ct < last_list1.len; ct++)	p_is_prop("off",last_list1.strings[ct],ret_mode); }
 				/ ("dove" / PREPSU ("cui"/"quali")) SPACE "ci" SPACE "si" SPACE ("siede" / "può" SPACE "sedere")
-					{ for(int ct = 0; ct < last_list1.len; ct++)	p_prop("on-seat",last_list1.strings[ct]); }
+					{ for(int ct = 0; ct < last_list1.len; ct++)	p_prop("on-seat",last_list1.strings[ct],ret_mode); }
 				/ PREPIN ("cui"/"quali" SPACE) "ci" SPACE "si" SPACE SPACE ("siede" / "può" SPACE "sedere")
-					{ for(int ct = 0; ct < last_list1.len; ct++)	p_prop("in-seat",last_list1.strings[ct]); }
-				/ ("indossabili"/CHE_SI_PUO "indossare")
-					{for(int ct = 0; ct < last_list1.len; ct++) p_prop("wearable",last_list1.strings[ct]);}
-				/ ADJBASES
+					{ for(int ct = 0; ct < last_list1.len; ct++)	p_prop("in-seat",last_list1.strings[ct],ret_mode); }
+				/ ("indossabili"/THATCAN "indossare")
+					{for(int ct = 0; ct < last_list1.len; ct++) p_prop("wearable",last_list1.strings[ct],ret_mode);}
 
-PROPPERSON	<-	ADJBASE (OPTSEP PROPPERSON )?
+ADJCONTAINER		<-	"aperto"	{ p_is_prop("open",last_name,ret_mode); }
+					/ "chiuso"	{ p_is_prop("closed",last_name,ret_mode); }
+					/ ("apribile"/"chiudibile"/ THATCAN ("aprire"/"chiudere"))	{ p_prop("openable",last_name,ret_mode); }
 
-PROPPERSONS	<-	ADJBASES (OPTSEP PROPPERSONS )?
-
-PROPVEHICLE	<-	ADJVEHICLE ( OPTSEP PROPVEHICLE )?
-ADJVEHICLE	<-	ADJOBJECT
-
-PROPVEHICLES	<-	ADJVEHICLES ( OPTSEP PROPVEHICLES )?
-ADJVEHICLES	<-	ADJOBJECTS
-
-PROPCONTAINER	<-	ADJCONTAINER ( OPTSEP PROPCONTAINER )?
-ADJCONTAINER		<-	"aperto"	{ p_is_prop("open",last_name); }
-					/ "chiuso"	{ p_is_prop("closed",last_name); }
-					/ ("apribile"/"chiudibile"/ CHE_SI_PUO ("aprire"/"chiudere"))	{ p_prop("openable",last_name); }
-					/ ADJOBJECT
-
-PROPCONTAINERS	<-	ADJCONTAINERS ( OPTSEP PROPCONTAINERS )?
 ADJCONTAINERS	<-	"apert" [ie]
-						{for(int ct = 0; ct < last_list1.len; ct++) p_is_prop("open",last_list1.strings[ct]);}
-					/ "chius" [ie]	{ p_is_prop("closed",last_name); }
-						{for(int ct = 0; ct < last_list1.len; ct++) p_is_prop("closed",last_list1.strings[ct]);}
-					/ ("apribili"/"chiudibili"/ CHE_SI_PUO ("aprire"/"chiudere"))
-						{for(int ct = 0; ct < last_list1.len; ct++) p_prop("openable",last_list1.strings[ct]);}
-					/ ADJOBJECTS
+						{for(int ct = 0; ct < last_list1.len; ct++) p_is_prop("open",last_list1.strings[ct],ret_mode);}
+					/ "chius" [ie]	{ p_is_prop("closed",last_name,ret_mode); }
+						{for(int ct = 0; ct < last_list1.len; ct++) p_is_prop("closed",last_list1.strings[ct],ret_mode);}
+					/ ("apribili"/"chiudibili"/ THATCAN ("aprire"/"chiudere"))
+						{for(int ct = 0; ct < last_list1.len; ct++) p_prop("openable",last_list1.strings[ct],ret_mode);}
 
-CHE_SI_PUO	<-	"che" SPACE "si" SPACE ("può"/"possono") SPACE
-CHE_E_STATO	<-	"che" SPACE ("è"/"sono") SPACE "stat" [aeio] SPACE
+
+FULLLIST	<-	"[" _ {printf("[");} LISTELS _"]" {printf("]");}
+LISTELS	<-	LISTEL ( SPACE {printf(" ");} LISTELS)?
+LISTEL	<-	"$" { printf("$"); } / SETNAME {printf("%s",last_name);} / s:QUOTED {printf("%s",s);} / n:NUMBER {printf("%s",n);} / FULLLIST
+PARTLIST	<-	"[" _ {printf("[");} LISTELS _ "|" _ LISTELS _"]" {printf("]");}
+
+PROPALL	<-	ADJALL	(OPTSEP PROPALL)?
+ADJALL	<-	ADJBASE / ADJOBJECT / ADJCONTAINER / ADJROOM
+
+PROPALLS	<-	ADJALLS	(OPTSEP PROPALLS)?
+ADJALLS	<-	ADJBASES / ADJOBJECTS / ADJCONTAINERS / ADJROOMS
+
+THATCAN	<-	"che" SPACE "si" SPACE ("può"/"possono") SPACE
+THATIS	<-	"che" SPACE ("è"/"sono") SPACE "stat" [aeio] SPACE
 
 AT_POSITION		<-	(
-					AT dir:DIR 
+					AT dir:DIR SPACE 
 					/ dir:UPDOWN
 					/ dir:INOUT
 				)
-				( PREPDI / ARTDET / PREPDA) locfrom:WORD (vice:NOTVICE / vice:VICE)
+				( PREPDI / ARTDET / PREPDA) SETLOCFROM (vice:NOTVICE / vice:VICE)
 				{
-					array_add(&last_list1,locfrom,(int)dir,(int)vice,0);
+					array_add(&last_list1,last_locfrom,(int)dir,(int)vice,0);
 				}
 AT_POSITIONS	<-	AT_POSITION ( OBLSEP AT_POSITIONS )?
 
 FROM_POSITION	<-	(
-					AT? dir:DIR
+					AT? dir:DIR SPACE
 					/ "in" SPACE dir:LOHI
 					/ dir:UPDOWN
 					/ dir:INOUT
-				) ( ("verso" SPACE)? ARTDET / PREPA / PREPDA) locto:WORD (vice:NOTVICE / vice:VICE)
+				) ( ("verso" SPACE)? ARTDET / PREPA / PREPDA) SETLOCTO (vice:NOTVICE / vice:VICE)
 				{
-					array_add(&last_list1,locto,(int)dir,(int)vice,0);
+					array_add(&last_list1,last_locto,(int)dir,(int)vice,0);
 				}
 FROM_POSITIONS	<-	FROM_POSITION (OBLSEP FROM_POSITIONS )?
 
-ACT_INSTEAD_OF	<-	[Ii] "nvece" SPACE "di" SPACE
-ACT_REFUSE	<-	[Rr] "ifiuta" SPACE "di" SPACE
-ACT_BEFORE	<-	[Pp] "rima" SPACE "di" SPACE
-ACT_PREVENT	<-	[Ii] "mpedisci" SPACE "di" SPACE
-ACT_PERFORM	<-	([Ee] "segui" / [Cc] "ompi") SPACE "il" SPACE
-ACT_AFTER	<-	[Dd] "opo" SPACE "aver" SPACE
+ACT_INSTEAD_OF	<-	[Ii] "nvece" SPACE "di" SPACE	{ $$ = "instead of"; }
+ACT_REFUSE	<-	[Rr] "ifiuta" SPACE "di" SPACE		{ $$ = "refuse"; }
+ACT_BEFORE	<-	[Pp] "rima" SPACE "di" SPACE		{ $$ = "before"; }
+ACT_PREVENT	<-	[Ii] "mpedisci" SPACE "di" SPACE		{ $$ = "prevent"; }
+ACT_PERFORM	<-	[Pp] "er" SPACE 				{ $$ = "perform"; }
+ACT_AFTER	<-	[Dd] "opo" SPACE				{ $$ = "after"; }
+TRY_TO		<-	[Pp] "rova" SPACE AT				{ $$ = "try"; }
 
-NAME	<-	( ARTDET {last_proper = 0;} / {last_proper = 1;} ) < [a-zA-Z] [a-zèéìòù]* >
-				{ array_add(&last_list1,(char*)$1,last_genre,last_plural,last_proper); }
+NAME	<-	( ARTDET {last_proper = 0;} / {last_proper = 1;} ) SETNAME
+				{ array_add(&last_list1,last_name,last_genre,last_plural,last_proper); }
 NAMES	<-	NAME ( OBLSEP NAMES)?
 
-OBLSEP	<-	COMMA / ( SPACE AND )
+OBLSEP	<-	COMMA / SPACE AND
 OPTSEP	<-	OBLSEP / SPACE
 
-WORD	<-	< [a-zA-Zèéìòù]* > { $$ = (char*)$1; }
+NUMBER	<-	< ("0" / [1-9] [0-9]*) >	{ $$ = (char*)$1; }
+WORD	<-	< [A-Za-zàèéìòù_]+ >	{ $$ = (char*)$1; }
+VARNUM	<-	< [A-Z0-9_]+ >		{ $$ = (char*)$1; }
 
-QUOTED	<-	QUOTE < [^\"]* > QUOTE { $$ = (char*)$1; }
+SETNAME		<-	word:WORD { set_name(word); }
+SETNAME2	<-	word:WORD { set_name2(word); }
+SETNAME3	<-	word:WORD { set_name3(word); }
+SETVARNUM2	<-	var:VARNUM { set_varornum2(var); }
+SETVARNUM3	<-	var:VARNUM { set_varornum3(var); }
+SETLOCFROM	<-	word:WORD { set_locfrom(word); }
+SETLOCTO		<-	word:WORD { set_locto(word); }
+SETLOC		<-	word:WORD { set_loc(word); }
+
+DEFNAME		<-	SETNAME	COMMA? ("chiamat" [oaie] SPACE name:QUOTED _ { printf("(name %s) %s\n",last_name,name); } )?
+				("con" SPACE "sinonim" [oi] SPACE syn:QUOTED _ { printf("(dict %s) %s\n",last_name,syn); } )? COMMA?
+
+QUOTED	<-	_ QUOTE < [^\"]* > QUOTE _	{ $$ = (char*)$1; }
 
 ARTDETMS	<-	("il"/"lo"/"Il"/"Lo" ) SPACE	{last_genre = 0; last_plural = 0;}
 ARTDETFS		<-	("la"/"La") SPACE		{last_genre = 1; last_plural = 0;}
@@ -601,29 +1050,43 @@ PREPMP	<-	("gli"/"i") SPACE
 PREPFP	<-	"lle" SPACE
 
 PREP		<-	PREPMS / PREPFS / PREPNN / PREPMP / PREPFP
-PREPDI	<-	("de"/"De") PREP / ("di"/"Di") SPACE
+PREPDI	<-	("de"/"De") PREP / ("di"/"Di") SPACE / "d'"
 PREPA	<-	("a"/"A") (PREP / SPACE)
 PREPDA	<-	("da"/"Da") (PREP / SPACE)
 PREPIN	<-	("ne"/"Ne") PREP / ("in"/"In") SPACE
 PREPSU	<-	("su"/"Su") (PREP / SPACE)
 
+NOT		<-	("non"/"Non") SPACE
+YESorNOT	<-	NOT { $$ = (char*)0; } / { $$ = (char*)1; }
+TRUEorFALSE	<-	("vero" { $$ = (char*)1; } / "falso" { $$ = (char*)0; }) SPACE
 THEREIS	<-	("c'è"/"C'è") SPACE
+THEREISorISNOT	<-	( NOT { $$ = (char*)0; } / { $$ = (char*)1; } ) THEREIS
 IS		<-	("è"/"È") SPACE
+ISorISNOT	<-	( NOT { $$ = (char*)0; } / { $$ = (char*)1; } ) IS
 ARE		<-	("sono"/"Sono") SPACE
+AREorARENOT	<-	( NOT { $$ = (char*)0; } / { $$ = (char*)1; } ) ARE
 ISARE	<-	IS / ARE
-AT		<-	("a"/"A") SPACE
-AND		<-	"e" SPACE
+ISAREorISARENOT	<-	( NOT { $$ = (char*)0; } / { $$ = (char*)1; } ) ISARE
+AT		<-	("ad"/"Ad"/"a"/"A") SPACE
+AND		<-	("ed"/"e") SPACE
+OR		<-	("oppure"/"od"/"o") SPACE
 SPACE	<-	[ \t]+
-QUOTE	<-	_ '\"' _
+QUOTE	<-	'\"'
 COMMA	<-	_ "," _
 COLON	<-	_ ":" _
+SEMICOLON	<-	_ ";" _
 STOP		<-	_ "." _
 QMARK	<-	_ "?" _
+EQUAL	<-	(_ "=" _ / SPACE IS "uguale" SPACE PREPA)			{ $$ = "="; }
+LESS		<-	(_ "<" _ / SPACE IS "minore" (SPACE PREPDI)? SPACE)	{ $$ = "<"; }
+GREATER	<-	(_ ">" _ / SPACE IS "maggiore" (SPACE PREPDI)? SPACE)	{ $$ = ">"; }
 INDENT	<-	< SPACE > {set_string(&last_indent,(char*)$1); } / { set_string(&last_indent,NULL); }
 _		<-	[ \t]*
+STOPRET	<-	STOP {printf("\n");}
 EOL		<-	"\n" / "\r\n" / "\r"
 
 %%
+
 int main(int argc, char *argv[]) {
   init();
   pcc_context_t *ctx = pcc_create(NULL);

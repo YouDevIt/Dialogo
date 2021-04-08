@@ -1,0 +1,96 @@
+
+(story title) Il Manto dell'Oscurità 
+(story author) Leonardo Boselli 
+(story noun) Il classico "Cloak of Darkness" - conversione 
+(story ifid) D7B4F5F9-C18B-47DC-B9CB-CC4259FB0EC7 
+(scoring enabled)
+
+(maximum score 2)
+
+(intro)Corri attraverso una notte di novembre bagnata dalla pioggia e
+	sei contento di vedere le luci scintillanti del Teatro dell'Opera. Ti sorprendi
+	nel non notare altre persone nei dintorni ma, ehi, cosa ti aspetti dalla
+	demo di un gioco a buon mercato...? (banner)(enter #foyer)
+(name #foyer) foyer del Teatro dell'Opera
+(name #foyer) foyer
+(room #foyer)
+
+
+(look #foyer) 
+	Ti trovi in un'ampia sala, spendidamente decorata di rosso
+	e oro e illuminata dall'alto da candelieri scintillanti. L'uscita
+	verso la strada è a nord e vedi delle porte a sud e a ovest. 
+
+(from #foyer go #west to #guardaroba)
+(from #guardaroba go #east to #foyer)
+(from #foyer go #south to #bar)
+(from #bar go #north to #foyer)
+
+(instead of [go #north  ]) 	(#Pippo is #in #foyer)Sei appena arrivato e, inoltre, fuori il tempo sta peggiorando. 
+(name #guardaroba) guardaroba
+(room #guardaroba)
+(look #guardaroba) 
+	Un tempo sulle pareti di questa piccola stanza erano
+	allineati numerosi ganci, ma adesso ne resta solo uno.
+	La porta d'uscita è a est. 
+(current player #Pippo)
+
+
+(name #Pippo) Pippo
+(animate #Pippo)
+(proper #Pippo)
+(#Pippo is #in #foyer)
+
+
+(name #gancio) gancio
+(supporter #gancio)
+(#gancio is #in #guardaroba)
+(dict #gancio) piolo 
+
+
+(descr #gancio) Si tratta solo di un gancio (collect $OGGETTO)*($OGGETTO is #on #gancio)(into $LISTA)(if) ~(empty $LISTA)(then)con qualcosa appeso. (else)avvitato alla parete. (endif)
+(name #bar) bar del foyer
+(name #bar) bar
+(room #bar)
+(look #bar) 
+	Il bar, molto più rozzo di quanto ti saresti aspettato
+	dopo l'opulenza del foyer a nord, è completamente vuoto.
+	Sembra che ci sia qualche sorta di messaggio scarabocchiato
+	nella segatura sparsa sul pavimento. 
+(inherently dark #bar)(#manto is #wornby #Pippo)(or)(#manto is #heldby #Pippo)
+
+(prevent $AZIONE)(current room #bar)~(player can see)~(command $AZIONE){($AZIONE = [$Verb|$])~($Verb = @go)}{($AZIONE = [$Verb|$])~($Verb = @enter)}{($AZIONE = [$Verb|$])~($Verb = @leave)}{($AZIONE = [$Verb|$])~($Verb = @look)}(select) Al buio? Puoi facilmente combinare dei pasticci.  (or) Hai l'impressione di aver combinato qualche pasticcio. (now)(il messaggio è stato cancellato) (or) Hai sempre più la sensazione di aver fatto un danno.  (stopping) 
+(name #messaggio) messaggio
+(#messaggio is #in #bar)
+(dict #messaggio) pavimento segatura 
+
+(descr #messaggio)   (if)(il messaggio è stato cancellato)(then)
+		Il messaggio è stato calpestato rendendone difficile la lettura.
+		Puoi solo distinguere le parole... (paragrafo)
+		(grassetto)\*\*\* Hai perso \*\*\*(normale)
+	 (else)(increase score by 1)
+		Il messaggio, chiaramente tracciato nella segatura, dice... (paragrafo)
+		(grassetto)\*\*\* Hai vinto \*\*\*(normale)
+		 (endif)(game over)
+(instead of [read #messaggio  ]) 	(try [examine #messaggio  ]) 
+(name #manto) manto di velluto
+(dict #manto) mantello nero scuro
+(name #manto) manto
+(wearable #manto)
+
+
+(#manto is #wornby #Pippo)
+
+
+(descr #manto) 
+	Un bel mantello di velluto leggermente bagnato da gocce di pioggia.
+	Il suo nero è così profondo che sembra quasi che assorba la luce della stanza. 
+(prevent [drop #manto  ]) ~(current room #guardaroba)Non è il luogo migliore dove lasciare un manto così elegante. 
+(prevent [drop #manto  ]) (current room #guardaroba)Non è il caso di gettare a terra un manto così elegante. 
+(perform [put #manto #on #gancio]) ~(i punti-gancio sono assegnati)(increase score by 1)(now)(i punti-gancio sono assegnati)(fail)
+
+(grammar [appendi [object] a/al/all/allo/alla/ai/agli/alle [object]] for [appendere $ to $])
+
+(grammar [appendi [object] su/sul/sull/sullo/sulla/sui/sugli/sulle [object]] for [appendere $ #on $])
+(perform [appendere $OGGETTO to $SUPPORTO]) 	(try [put $OGGETTO #on $SUPPORTO]) 
+(perform [appendere $OGGETTO #on $SUPPORTO]) 	(try [put $OGGETTO #on $SUPPORTO]) 

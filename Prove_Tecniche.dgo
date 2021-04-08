@@ -1,0 +1,54 @@
+
+Il titolo dell'avventura è "Solo una prova"
+Il sottotitolo è "Un'avventura di prova"
+Il trafiletto è "Proviamo se funziona"
+Il suo IFID è "BE7F46CE-351C-4E33-A314-10A1DB44155B"
+L'autore è Leonardo Boselli
+La release è 6
+
+Il punteggio è abilitato
+
+La strada, il giardino, il magazzino e il vicolo sono stanze
+
+La strada è a nord del giardino, a est del magazzino, a sud del vicolo. La descrizione della strada è "Ti trovi su una strada asfaltata. A nord vedi uno stretto vicolo, a ovest un magazzino e a sud un giardino."
+Il garage è una stanza buia. È a est del giardino
+La mansarda è una stanza. È sopra il magazzino
+
+Pippo è una persona nella strada. Il giocatore è Pippo.
+Pluto è una persona nel magazzino.
+
+Il tavolino è un supporto nel magazzino
+La credenza è un contenitore chiuso che si può aprire nel magazzino
+
+La sua descrizione è "Una capiente credenza di colore" seleziona "rosso" o "verde" o "blu" a caso "."
+
+//La sua descrizione è "Una capiente credenza che è" se la strada e il giardino non sono stanze allora "aperta." altrimenti "chiusa."
+//La sua descrizione è "Una capiente credenza che è" se la credenza è un contenitore allora "un contenitore." altrimenti "un supporto."
+
+//La sua descrizione è "Una capiente credenza che è" aperta o chiusa? "AAA" "BBB".
+
+Il mango, la pera e la papaja sono oggetti portatili e commestibili. Sono nella credenza.
+
+La sedia e il sedile sono oggetti su cui ci si siede nel magazzino
+
+La lampada è un oggetto portatile che fornisce luce se acceso
+La descrizione è "Una lampada" la lampada è accesa o spenta? "."
+La lampada è sul tavolino
+La torcia è un portatile che fornisce luce nella credenza. La sua descrizione è "Una torcia accesa."
+
+La bicicletta è un supporto mobile portatile nel vicolo.
+
+L'attaccapanni è un supporto nella mansarda. Il cappotto è un indossabile sull'attaccapanni. La sua descrizione è "Un caldo cappotto."
+
+Invece di cantare: "La la la." VAR è la somma di 2 e 3; VAR
+Dopo aver mangiato qualcosa: "Applausi!".
+Prima di mangiare qualcosa: "Ti schiarisci la voce.".
+
+//Intendi fotografa qualcosa come fotografare con participio passato fotografato.
+Intendi fotografa qualcosa come fotografare.
+
+Prima di fotografare qualcosa: "Cheese!".
+Per fotografare qualcosa: "Click! Hai fatto una foto.".
+Dopo aver fotografato un OGGETTO: "Che bella foto " di OGGETTO aperto all'OGGETTO chiuso dal OGGETTO acceso nell'OGGETTO spento sulla OGGETTO il OGGETTO un OGGETTO
+
+L'automobile è un veicolo femminile nel garage. La descrizione è "Un'automobile sportiva."

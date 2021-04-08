@@ -1,0 +1,102 @@
+
+Titolo: Il Manto dell'Oscurità
+Autore: Leonardo Boselli
+Sottotitolo: Il classico "Cloak of Darkness" - conversione
+IFID: D7B4F5F9-C18B-47DC-B9CB-CC4259FB0EC7
+
+Il punteggio è abilitato.
+Il massimo punteggio è 2.
+
+Introduzione:
+	"Corri attraverso una notte di novembre bagnata dalla pioggia e
+	sei contento di vedere le luci scintillanti del Teatro dell'Opera. Ti sorprendi
+	nel non notare altre persone nei dintorni ma, ehi, cosa ti aspetti dalla
+	demo di un gioco a buon mercato...?"
+	Intestazione
+	Entra nel foyer
+
+Il foyer, chiamato "foyer del Teatro dell'Opera", è una stanza.
+
+Il foyer è descritto da "
+	Ti trovi in un'ampia sala, spendidamente decorata di rosso
+	e oro e illuminata dall'alto da candelieri scintillanti. L'uscita
+	verso la strada è a nord e vedi delle porte a sud e a ovest."
+
+Dal foyer vai a ovest verso il guardaroba e a sud verso il bar.
+
+Invece di andare a nord:
+	Pippo è nel foyer
+	"Sei appena arrivato e, inoltre, fuori il tempo sta peggiorando."
+
+Il guardaroba è una stanza descritta da "
+	Un tempo sulle pareti di questa piccola stanza erano
+	allineati numerosi ganci, ma adesso ne resta solo uno.
+	La porta d'uscita è a est."
+
+Il giocatore è Pippo.
+Pippo è una persona nel foyer.
+
+Il gancio è un supporto nel guardaroba con sinonimo "piolo".
+La sua descrizione è "Si tratta solo di un gancio"
+	colleziona l'OGGETTO tale che l'OGGETTO è sul gancio nella LISTA
+	se la LISTA non è vuota allora "con qualcosa appeso." altrimenti "avvitato alla parete."
+
+Il bar, chiamato "bar del foyer", è una stanza descritta da "
+	Il bar, molto più rozzo di quanto ti saresti aspettato
+	dopo l'opulenza del foyer a nord, è completamente vuoto.
+	Sembra che ci sia qualche sorta di messaggio scarabocchiato
+	nella segatura sparsa sul pavimento."
+
+Il bar è buio se Pippo indossa il manto o Pippo regge il manto.
+
+Impedisci di fare l'AZIONE:
+	la stanza attuale è il bar
+	il giocatore non può vedere
+	l'AZIONE non è un comando
+	il verbo dell'AZIONE non è andare
+	il verbo dell'AZIONE non è entrare
+	il verbo dell'AZIONE non è uscire
+	il verbo dell'AZIONE non è guardare
+	seleziona "Al buio? Puoi facilmente combinare dei pasticci." oppure "Hai l'impressione di aver combinato qualche pasticcio."; ora è vero che il messaggio è stato cancellato! oppure "Hai sempre più la sensazione di aver fatto un danno." fermandoti
+
+Il messaggio è un oggetto nel bar con sinonimi "pavimento segatura"
+La sua descrizione è " " se è vero che il messaggio è stato cancellato? allora "
+		Il messaggio è stato calpestato rendendone difficile la lettura.
+		Puoi solo distinguere le parole... (paragrafo)
+		(grassetto)\*\*\* Hai perso \*\*\*(normale)
+	" altrimenti Incrementa il punteggio di 1; "
+		Il messaggio, chiaramente tracciato nella segatura, dice... (paragrafo)
+		(grassetto)\*\*\* Hai vinto \*\*\*(normale)
+		" game over
+
+Invece di leggere il messaggio:
+	prova a esaminare il messaggio
+
+Il manto, chiamato "manto di velluto" con sinonimi "mantello nero scuro", è un oggetto indossabile.
+Il manto è indossato da Pippo.
+La sua descrizione è "
+	Un bel mantello di velluto leggermente bagnato da gocce di pioggia.
+	Il suo nero è così profondo che sembra quasi che assorba la luce della stanza."
+
+Impedisci di lasciare il manto:
+	la stanza corrente non è il guardaroba
+	"Non è il luogo migliore dove lasciare un manto così elegante."
+
+Impedisci di lasciare il manto:
+	l'attuale stanza è il guardaroba
+	"Non è il caso di gettare a terra un manto così elegante."
+
+Per mettere il manto sul gancio:
+	non è vero che i punti-gancio sono assegnati?
+	aumenta il punteggio di 1
+	ora è vero che i punti-gancio sono assegnati!
+	fallisci
+
+Interpreta appendi qualcosa a qualcos'altro come appendere con participio passato appeso.
+Interpreta appendi qualcosa su qualcos'altro come appendere con participio passato appeso.
+
+Per appendere un OGGETTO a un SUPPORTO:
+	prova a mettere l'OGGETTO sul SUPPORTO
+
+Per appendere un OGGETTO su un SUPPORTO:
+	prova a mettere l'OGGETTO sul SUPPORTO
