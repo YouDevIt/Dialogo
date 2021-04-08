@@ -20,10 +20,11 @@ In questa fase ad "accesso anticipato", **Dialogo** è costituito dalla seguente
 
 ## Come compilare un'avventura scritta con **Dialogo**
 
-Sono disponibili tre file batch per Windows che si riferiscono al progetto "prova":
-1. *c.bat*: compila il progetto di prova "prova.dgo" e genera "prova.dg" (un programma scritto in "Dialog")
-2. *d.bat*: esegue il file "prova.dg" nel debugger e ne consente il debugging
-3. *w.bat*: compila il file "prova.dg" e genera una pagina web pubblicabile online
+Sono disponibili tre file batch per Windows:
+1. *c_MANTO.bat*: compila il progetto "Manto_dell_Oscurità.dgo" e genera "progetto.dg" (un programma scritto in "Dialog")
+1. *c_PROVA.bat*: compila il progetto "Prove_Tecniche.dgo" e genera "progetto.dg" (un programma scritto in "Dialog")
+2. *d.bat*: esegue il file "progetto.dg" nel debugger e ne consente il debugging
+3. *w.bat*: compila il file "progetto.dg" e genera una pagina web pubblicabile online
 
 ## Cosa fa "c.bat"
 
