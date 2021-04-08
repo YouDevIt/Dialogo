@@ -1,7 +1,7 @@
 # Dialogo
 Il linguaggio in "italiano controllato" per creare avventure testuali in italiano.
 
-Versione attuale: **0.06 / 24 marzo 2021**
+Versione attuale: **0.06 / 8 aprile 2021**
 
 Si tratta di un primo abbozzo che necessita di moltissimi miglioramenti e aggiunte.
 Per ora è disponibile la **toolchain** per Windows.
